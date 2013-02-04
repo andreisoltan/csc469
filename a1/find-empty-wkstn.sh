@@ -37,10 +37,14 @@ check () {
     # if count-users.sh returns 0
     while [[ $STATION -le $MAX ]]; do
         TARGET=$LAB-`printf "%02d" $STATION`;
-        COUNT=`ssh $TARGET count-users.sh`;
+        COUNT=`ssh -q $TARGET $COUNTUSERS`;
 
-        if [[ $COUNT -eq 0 ]]; then
-            echo $TARGET;
+        if [[ $? -eq 0 ]]; then
+            if [[ $COUNT -eq 0 ]]; then
+                echo $TARGET;
+            fi
+        else
+            echo "Error connecting to $TARGET" >&2;
         fi
 
         (( STATION = STATION + BANDWIDTH ));
