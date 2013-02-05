@@ -1,14 +1,44 @@
-
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "tsc.h"
 
 u_int64_t inactive_periods(int num, u_int64_t threshold, u_int64_t *samples);
 
-int main() {
+int main(int argc, char **argv) {
 
+    // TODO: Determine clock speed to convert cycles/milliseconds
 
-	// TODO: Do stuff to get the measurements
+    int num = 100;
+    u_int64_t threshold = 5000;
+    u_int64_t *samples;
+
+    while ((c = getopt (argc, argv, "t:n:")) != -1) {
+        switch (c) {
+            case 't':
+                threshold = strtoull(optarg);
+                break;
+            case 'n':
+                num = strtoul(optarg);
+                break;
+            case '?':
+                if ((optopt == 't' )||(optopt == 'n'))
+                    fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                else if (isprint(optopt))
+                    fprintf(stderr, "Unknown option -%c.\n", optopt);
+                else
+                    fprintf(stderr, "Unknown option character \\x%x.\n", optopt);
+                return 1;
+                
+        }
+    }
+
+    printf("Collecting %d samples with threshold %ll...\n", num, threshold);
+
+    samples = malloc(sizeof(u_int64_t)*num);
+    inactive_periods(num, threshold, samples);
+    free(samples);
+    samples = NULL;
 
 	return 0;
 }
@@ -30,5 +60,9 @@ inactive_periods(int num, u_int64_t threshold, u_int64_t *samples) {
 
 	if(!samples)
 		return -1;
+
+    // "The function should return the initial reading - that is, the start of
+    // the first active period." says the assignment.
+    return samples[0];
 	
 }
