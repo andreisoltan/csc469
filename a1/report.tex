@@ -1,0 +1,64 @@
+\documentclass{article}
+\usepackage{fullpage}
+%\usepackage{graphicx}
+
+\author{Andrei Soltan \and Jonathan Prindiville}
+\title{CSC469: Assignment 1}
+\date{11 February, 2013}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{Introduction}
+(goals, etc.)
+
+\newpage
+\section{Part A: Performance measurement}
+(With what frequency do timer interrupts occur? How long does it take to handle a timer interrupt?)
+(If it appears that there are other, non-timer interrupts (that is, other short periods of inactivity that don't fit the pattern of the periodic timer interrupt), explain what these are likely to be, based on what you can determine about other activity on the system you are measuring.)
+(Over the period of time that the process is running (that is, without lengthy interruptions corresponding to a switch to another process), what percentage of time is lost to servicing interrupts (of any kind)?)
+
+\subsection{Tracking process activity}
+\subsubsection{Methodology}
+(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+\subsubsection{Results}
+(Insert tabular, graphical results, discussion)
+
+\subsection{Context switches}
+(How long is a time slice? That is, how long does one process get to run before it is forced to switch to another process?)
+(Is the length of the time slice affected by the number of processes that you are using?)
+(Are you surprised by your measurements?)
+(How does it compare to what you were told about time slices in your previous OS course?)
+\subsubsection{Methodology}
+(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+\subsubsection{Results}
+(Insert tabular, graphical results, discussion)
+
+\newpage
+\section{Part B: Measurement bias}
+(How significant is measurement bias due to Unix environment size on current systems?)
+(To what extent does Linux ASLR (address space layout randomization) affect measured performance? Does it mitigate or exacerbate the effect of Unix environment size?)
+(What underlying architectural events in the microprocessor appear to be causing the measurement bias?)
+\subsection{Methodology}
+(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+\subsection{Results}
+(Insert tabular, graphical results, discussion)
+
+\newpage
+\appendix
+
+\section{Tools}
+(Include an appendix that describes how to use your benchmark tools so that someone else could reproduce your experiments.)
+%Check out the random bars in figure \ref{fig:random}.
+%\begin{figure}
+%\centering
+%\includegraphics[scale=1.25]{random.eps}
+%\caption{Random intervals (red).}
+%\label{fig:random}
+%\end{figure}
+
+\end{document}
