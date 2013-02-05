@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "tsc.h"
 
@@ -9,17 +10,27 @@ int main(int argc, char **argv) {
 
     // TODO: Determine clock speed to convert cycles/milliseconds
 
+    int c;
     int num = 100;
     u_int64_t threshold = 5000;
     u_int64_t *samples;
 
     while ((c = getopt (argc, argv, "t:n:")) != -1) {
         switch (c) {
+            // TODO: Checking that string->int conversions succeed...
             case 't':
-                threshold = strtoull(optarg);
+                threshold = strtoull(optarg, NULL, 10);
+                if (threshold == 0) {
+                    fprintf(stderr, "-t may not be zero\n");
+                    return 1;
+                }
                 break;
             case 'n':
-                num = strtoul(optarg);
+                num = strtoul(optarg, NULL, 10);
+                if (num == 0) {
+                    fprintf(stderr, "-n may not be zero\n");
+                    return 1;
+                }
                 break;
             case '?':
                 if ((optopt == 't' )||(optopt == 'n'))
@@ -33,7 +44,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    printf("Collecting %d samples with threshold %ll...\n", num, threshold);
+    printf("Collecting %d samples with threshold %lld...\n", num, threshold);
 
     samples = malloc(sizeof(u_int64_t)*num);
     inactive_periods(num, threshold, samples);
@@ -56,6 +67,7 @@ int main(int argc, char **argv) {
 u_int64_t
 inactive_periods(int num, u_int64_t threshold, u_int64_t *samples) {
 
+    fprintf(stderr, "Just kidding, this doesn't do shit yet\n");
 	// TODO: Add code to do the measurements
 
 	if(!samples)
