@@ -1,5 +1,8 @@
+#!/bin/bash
 # TODO: Complete the shell script to:
 # 			- run the experiment & get data
 # 			- run gnuplot (or replacement)
 # 			- display the resulting graph (?)
 
+# Can use grep, /proc/cpuinfo to get current clock speed
+# Can use taskset to bind process to single CPU (the one that we measure)
