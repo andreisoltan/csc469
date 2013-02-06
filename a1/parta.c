@@ -4,8 +4,8 @@
 #include <unistd.h>
 #include "tsc.h"
 
-#define DEFAULT_THRESH 10000
-#define DEFAULT_NUM    100
+#define DEFAULT_THRESH 500
+#define DEFAULT_NUM    1000
 
 u_int64_t inactive_periods(int num, u_int64_t threshold, u_int64_t *samples);
 u_int64_t collect_intervals(int num, u_int64_t *samples);
@@ -13,6 +13,7 @@ u_int64_t collect_intervals(int num, u_int64_t *samples);
 int main(int argc, char **argv) {
 
     // TODO: Determine clock speed to convert cycles/milliseconds
+    // (/proc/cpuinfo contains the current speed of the processor)
 
     char flag_i = 0;
     char flag_t = 0;
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    // Storage space for recorded samples
     samples = malloc(sizeof(u_int64_t)*num);
 
     if (!samples) {
@@ -85,6 +87,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    // Make cycle counter available
     start_counter();
 
     if (flag_i) { // Collect interval timing
@@ -100,8 +103,20 @@ int main(int argc, char **argv) {
 
     } else { // Measure inactive periods
         inactive_periods(num, threshold, samples);
+
+        printf(" %8s \t%15s\t%15s\t%15s\n",
+          "TYPE", "START-CYCLE", "END-CYCLE", "DURATION");
+        i = 1;
+        while ( i < (num - 2 )) {
+            printf("%10s\t%15lld\t%15lld\t%15lld\n",
+              ((i%2)==0)?(" active "):(" inactive "),
+              samples[i], samples[i+1], samples[i+1] - samples[i]);
+            i++;
+        }
+
     }
 
+    // Cleanup
     free(samples);
     samples = NULL;
 
@@ -117,15 +132,49 @@ int main(int argc, char **argv) {
  * A trace of active and inactive periods for a process
  * running on an Intel Linux system can be created using
  * the provided start_counter() and get_counter() functions.
+ *
+ * (samples[n],samples[n+1]) represents an active period iff
+ * n is even and represents an inactive period iff n is odd:
+ *
+ * samples[0] -
+ *             } First active period
+ * samples[1] - 
+ *             } First inactive period
+ * samples[2] -
+ *             } Second active period
+ * samples[3] -
+ *             } Second inactive period
+ * etc.   ...
+ *
  */
 u_int64_t
 inactive_periods(int num, u_int64_t threshold, u_int64_t *samples) {
 
-    fprintf(stderr, "Just kidding, this doesn't do shit yet\n");
-	// TODO: Add code to do the measurements
+    int i = 1;
+    u_int64_t last;
+    u_int64_t now;
 
 	if(!samples)
 		return -1;
+
+    // Begin first active period
+    samples[0] = (last = get_counter());
+
+    while ( i < (num - 1) ) {
+        now = get_counter();
+
+        // If we have exceeded the threshold, then we must have been
+        // inactive from last until now:
+        if ((now - last) > threshold) {
+            samples[i++] = last; // odd index
+            samples[i++] = now;  // even index
+        }
+
+        last = now;
+    }
+
+    // TODO: Something with the last entry in samples in the case that
+    // we break out of the loop with i = (num - 1)?
 
     // "The function should return the initial reading - that is, the start of
     // the first active period." says the assignment.
