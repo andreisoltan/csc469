@@ -21,15 +21,16 @@ mkdir $LOGDIR
 echo "Capturing platform data..."
 ./platform-info.sh > $LOGDIR/platform-info.log
 
-echo "Running on CPU $CPU at $FREQ MHz..."
-
-echo "Inactive periods..."
+echo "Inactive periods (on CPU $CPU @ $FREQ MHz)..."
 taskset -c $CPU \
     ./parta \
         -f $FREQ \
         -t 500 -n 1000 > $LOGDIR/inactive_periods.log
 
-echo "Context switching..."
+# Check frequency again, for paranoia's sake
+FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
+
+echo "Context switching (on CPU $CPU @ $FREQ MHz)..."
 taskset -c $CPU \
     ./parta \
         -c \
