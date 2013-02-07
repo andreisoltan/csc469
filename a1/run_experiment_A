@@ -1,8 +1,29 @@
-#!/bin/bash
+#!/bin/bash -x
+
+# Can use taskset to bind process to single CPU (the one that we measure).
+# In order to run foo on cpu0:
+#       taskset -c 0 foo
+
+# Finding clock speeds:
+# We can get a list of the clock speeds of each processor on this system with
+# the following command:
+#       sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo
+# The nth line of output corresponds to the clock of processor #(n-1)
+
+# We'll run on the specified CPU, having frequency $FREQ
+CPU=0;
+FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
+
+rm -f log
+
+taskset -c $CPU \
+    ./parta \
+        -f $FREQ \
+        -t 500 -n 1000 > log
+
+
 # TODO: Complete the shell script to:
-# 			- run the experiment & get data
+#           - run the experiment & get data (should we do the average of multiple
+#            runs or something?)           
 # 			- run gnuplot (or replacement)
 # 			- display the resulting graph (?)
-
-# Can use grep, /proc/cpuinfo to get current clock speed
-# Can use taskset to bind process to single CPU (the one that we measure)
