@@ -1,0 +1,15 @@
+Platform summary for lab machines (based on the scripts gather-platform-info.sh
+and platform-info.sh -- uses machine number 2 in each lab for simplicity,
+assuming that each lab contains one type of machine)
+
+b2200 | C2Duo E6550   | 2.33GHz | 2 cores |  2GB | ondemand
+b2220 | Pentium G630  | 2.70GHz | 2 cores |  8GB | ondemand
+b2240 | Core i5 3570  | 3.40GHz | 4 cores | 20GB | ondemand
+b3185 | Pentium E2160 | 1.80GHz | 2 cores |  2GB | ondemand
+b3200 | Core i5 650   | 3.20GHz | 4 cores |  1GB | ondemand
+
+b2210 | P4            | 3.20GHz | 2 cores |  1GB | none
+b3175 | C2 6300       | 1.86GHz | 2 cores |  1GB | none
+b3195 | C2 6300       | 1.86GHz | 2 cores |  1GB | none
+s2360 | C2 6300       | 1.86GHz | 2 cores |  1GB | none
+
