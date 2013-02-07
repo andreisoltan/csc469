@@ -36,7 +36,16 @@ int main(int argc, char **argv) {
     // No arguments, print usage, exit.
     if (argc == 1) {
         fprintf(stderr, "\n\
-    USAGE:  %s [-f <MHz>] [-i] [-n <num>] [-t <threshold>]\n\
+    USAGE:  %s [-c] [-f <MHz>] [-i] [-n <num>] [-t <threshold>]\n\
+\n\
+    We'll use this tool to gather data regarding:\n\
+    * A1a: Tracking process activity with (optional) arguments -f -n -t\n\
+    * A1a: Context switching with the -c flag (and optionally, -f -n -t)\n\
+\n\
+      -c\n\
+          The process will fork, both parent and child will record\n\
+          inactive periods. We'll use this data to try to gain some\n\
+          insight into context switching.\n\
 \n\
       -f <MHz>\n\
           Using this floating point value assumed to be the clock rate\n\
