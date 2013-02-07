@@ -131,28 +131,29 @@ int main(int argc, char **argv) {
 
     } else { // Measure inactive periods
 
-        // fork
-        childpid = fork();
+        // fork if asked
+        if (flag_c)
+            childpid = fork();
 
         // both processes should go ahead and record their intervals...
         inactive_periods(num, threshold, samples);
 
         // parent waits for child to finish so the output is not intermingled
         // Both print, we sort it out later based on the CHILD column...
-        if (childpid != 0) {
+        if (flag_c && (childpid != 0)) {
             wait(NULL);
         } else {
             // child prints first so it puts out the headers:
             printf("%6s\t%6s\t%11s\t%11s\t%11s\t%11s\n",
-              ((flag_c == 1)?"CHILD":""),
-              "ACTIVE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
+//              ((flag_c == 1)?"CHILD":""),
+              "CHILD", "ACTIVE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
               ((flag_f == 1)?"LEN-MS":"N/A"));
         }
 
         i = 1;
         while ( i < (num - 2 )) {
             printf("%6s\t%6s\t%11llu\t%11llu\t%11llu\t%11.8f\n",
-              (!childpid)?("yes"):("no"),
+              (flag_c && (!childpid))?("yes"):("no"),
               ((i%2)==0)?("yes"):("no"),
               samples[i], samples[i+1], samples[i+1] - samples[i],
               ((flag_f == 1)?((samples[i+1] - samples[i]) / freq):0));
