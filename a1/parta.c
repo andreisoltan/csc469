@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
     USAGE:  %s [-t <threshold>] [-n <num>] [-i]\n\
 \n\
       -t <threshold>\n\
-          Detect inactive time periods at this threshold (defaults to %d)\n\
+          Detect inactive time periods longer than this threshold (defaults\n\
+          to %d)\n\
 \n\
       -n <num>\n\
           Number of samples to collect (defaults to %d)\n\
@@ -98,7 +99,7 @@ int main(int argc, char **argv) {
         collect_intervals(num, samples);
 
         for (i = 0; i < num; i++) {
-            printf("%lld\n", samples[i]);
+            printf("%lu\n", samples[i]);
         }
 
     } else { // Measure inactive periods
@@ -108,7 +109,7 @@ int main(int argc, char **argv) {
           "TYPE", "START-CYCLE", "END-CYCLE", "DURATION");
         i = 1;
         while ( i < (num - 2 )) {
-            printf("%10s\t%15lld\t%15lld\t%15lld\n",
+            printf("%10s\t%15lu\t%15lu\t%15lu\n",
               ((i%2)==0)?(" active "):(" inactive "),
               samples[i], samples[i+1], samples[i+1] - samples[i]);
             i++;
