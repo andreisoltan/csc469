@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # Can use taskset to bind process to single CPU (the one that we measure).
 # In order to run foo on cpu0:
@@ -14,13 +14,27 @@
 CPU=0;
 FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
 
-rm -f log
+LOGDIR=parta.log.$$
+mkdir $LOGDIR
 
+
+echo "Capturing platform data..."
+./platform-info.sh > $LOGDIR/platform-info.log
+
+echo "Running on CPU $CPU at $FREQ MHz..."
+
+echo "Inactive periods..."
 taskset -c $CPU \
     ./parta \
         -f $FREQ \
-        -t 500 -n 1000 > log
+        -t 500 -n 1000 > $LOGDIR/inactive_periods.log
 
+echo "Context switching..."
+taskset -c $CPU \
+    ./parta \
+        -c \
+        -f $FREQ \
+        -t 500 -n 1000 > $LOGDIR/context_switch.log
 
 # TODO: Complete the shell script to:
 #           - run the experiment & get data (should we do the average of multiple

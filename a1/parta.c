@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "tsc.h"
+#include <unistd.h>
 
 #define DEFAULT_THRESH 500
 #define DEFAULT_NUM    1000
@@ -15,6 +17,7 @@ int main(int argc, char **argv) {
     // TODO: Determine clock speed to convert cycles/milliseconds
     // (/proc/cpuinfo contains the current speed of the processor)
 
+    char flag_c = 0;
     char flag_f = 0;
     char flag_i = 0;
     char flag_n = 0;
@@ -25,6 +28,8 @@ int main(int argc, char **argv) {
     int num = DEFAULT_NUM;
     u_int64_t threshold = DEFAULT_THRESH;
     u_int64_t *samples;
+
+    pid_t childpid = 0;
 
     int i;
 
@@ -53,7 +58,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    while ((c = getopt (argc, argv, "f:t:n:i")) != -1) {
+    while ((c = getopt (argc, argv, "f:t:n:ic")) != -1) {
         switch (c) {
             // TODO: Checking that string->int conversions succeed...
             case 't':
@@ -83,6 +88,9 @@ int main(int argc, char **argv) {
                     return 1;
                 }
                 break;
+            case 'c':
+                flag_c = 1;
+                break;    
             case '?':
                 if ((optopt == 't' )||(optopt == 'n')||(optopt == 'f'))
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -122,15 +130,30 @@ int main(int argc, char **argv) {
         }
 
     } else { // Measure inactive periods
+
+        // fork
+        childpid = fork();
+
+        // both processes should go ahead and record their intervals...
         inactive_periods(num, threshold, samples);
 
-        printf(" %8s \t%11s\t%11s\t%11s\t%11s\n",
-          "TYPE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
-          ((flag_f == 1)?"LEN-MS":"N/A"));
+        // parent waits for child to finish so the output is not intermingled
+        // Both print, we sort it out later based on the CHILD column...
+        if (childpid != 0) {
+            wait(NULL);
+        } else {
+            // child prints first so it puts out the headers:
+            printf("%6s\t%6s\t%11s\t%11s\t%11s\t%11s\n",
+              ((flag_c == 1)?"CHILD":""),
+              "ACTIVE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
+              ((flag_f == 1)?"LEN-MS":"N/A"));
+        }
+
         i = 1;
         while ( i < (num - 2 )) {
-            printf("%10s\t%11llu\t%11llu\t%11llu\t%11.9f\n",
-              ((i%2)==0)?(" active "):(" inactive "),
+            printf("%6s\t%6s\t%11llu\t%11llu\t%11llu\t%11.8f\n",
+              (!childpid)?("yes"):("no"),
+              ((i%2)==0)?("yes"):("no"),
               samples[i], samples[i+1], samples[i+1] - samples[i],
               ((flag_f == 1)?((samples[i+1] - samples[i]) / freq):0));
             i++;
@@ -231,4 +254,13 @@ collect_intervals(int num, u_int64_t *samples) {
 
     return samples[0];  
     
+}
+
+u_int64_t
+forking_inactive_periods(int num, u_int64_t *samples) {
+
+
+
+
+
 }
