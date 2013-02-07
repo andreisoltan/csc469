@@ -77,4 +77,5 @@ LAB=$1;
 for i in `seq 1 $BANDWIDTH`; do
     check $i &
 done
+wait
 
