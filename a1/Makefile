@@ -17,7 +17,7 @@ submit: a1.tgz
 
 # Submission tarball
 a1.tgz: docs build
-	tar -czvf $@ report.pdf parta.c run_experiment_A
+	tar -czvf $@ report.pdf parta.c run_experiment_A count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh README Makefile tsc.c tsc.h
 
 # Add gnuplot generation...
 docs: report.pdf
