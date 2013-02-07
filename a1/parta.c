@@ -15,11 +15,13 @@ int main(int argc, char **argv) {
     // TODO: Determine clock speed to convert cycles/milliseconds
     // (/proc/cpuinfo contains the current speed of the processor)
 
+    char flag_f = 0;
     char flag_i = 0;
-    char flag_t = 0;
     char flag_n = 0;
+    char flag_t = 0;
 
     int c;
+    double freq;
     int num = DEFAULT_NUM;
     u_int64_t threshold = DEFAULT_THRESH;
     u_int64_t *samples;
@@ -29,24 +31,29 @@ int main(int argc, char **argv) {
     // No arguments, print usage, exit.
     if (argc == 1) {
         fprintf(stderr, "\n\
-    USAGE:  %s [-t <threshold>] [-n <num>] [-i]\n\
+    USAGE:  %s [-f <MHz>] [-i] [-n <num>] [-t <threshold>]\n\
 \n\
-      -t <threshold>\n\
-          Detect inactive time periods longer than this threshold (defaults\n\
-          to %d)\n\
-\n\
-      -n <num>\n\
-          Number of samples to collect (defaults to %d)\n\
+      -f <MHz>\n\
+          Using this floating point value assumed to be the clock rate\n\
+          in MHz, output millisecond measurements for inactive periods.\n\
+          This argument has no effect when used with -i.\n\
 \n\
       -i\n\
           Collect interval times. We'll use this to try to determine a\n\
-          suitable threshold. This option will override -t\n\n",
-          argv[0], DEFAULT_THRESH, DEFAULT_NUM);
+          suitable threshold. This option will override -t.\n\n\
+\n\
+      -n <num>\n\
+          Number of samples to collect (defaults to %d).\n\
+\n\
+      -t <threshold>\n\
+          Detect inactive time periods longer than this threshold (defaults\n\
+          to %d).\n",
+          argv[0], DEFAULT_NUM, DEFAULT_THRESH);
 
         return 1;
     }
 
-    while ((c = getopt (argc, argv, "t:n:i")) != -1) {
+    while ((c = getopt (argc, argv, "f:t:n:i")) != -1) {
         switch (c) {
             // TODO: Checking that string->int conversions succeed...
             case 't':
@@ -59,7 +66,7 @@ int main(int argc, char **argv) {
                 break;
             case 'n':
                 flag_n = 1;
-                num = strtoul(optarg, NULL, 10);
+                num = strtoull(optarg, NULL, 10);
                 if (num == 0) {
                     fprintf(stderr, "-n may not be zero\n");
                     return 1;
@@ -68,8 +75,16 @@ int main(int argc, char **argv) {
             case 'i':
                 flag_i = 1;
                 break;
+            case 'f':
+                flag_f = 1;
+                freq = strtod(optarg, NULL);
+                if (freq == 0.0) {
+                    fprintf(stderr, "-f may not be zero\n");
+                    return 1;
+                }
+                break;
             case '?':
-                if ((optopt == 't' )||(optopt == 'n'))
+                if ((optopt == 't' )||(optopt == 'n')||(optopt == 'f'))
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 else if (isprint(optopt))
                     fprintf(stderr, "Unknown option -%c.\n", optopt);
@@ -79,6 +94,10 @@ int main(int argc, char **argv) {
                 
         }
     }
+
+    // We are given the frequency in MHz (million-cycles/second), we'll convert
+    // it here to cycles/millisecond for convenience later.
+    freq = freq * (1000000 / 1000);
 
     // Storage space for recorded samples
     samples = malloc(sizeof(u_int64_t)*num);
@@ -105,13 +124,15 @@ int main(int argc, char **argv) {
     } else { // Measure inactive periods
         inactive_periods(num, threshold, samples);
 
-        printf(" %8s \t%15s\t%15s\t%15s\n",
-          "TYPE", "START-CYCLE", "END-CYCLE", "DURATION");
+        printf(" %8s \t%11s\t%11s\t%11s\t%11s\n",
+          "TYPE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
+          ((flag_f == 1)?"LEN-MS":"N/A"));
         i = 1;
         while ( i < (num - 2 )) {
-            printf("%10s\t%15llu\t%15llu\t%15llu\n",
+            printf("%10s\t%11llu\t%11llu\t%11llu\t%11.9f\n",
               ((i%2)==0)?(" active "):(" inactive "),
-              samples[i], samples[i+1], samples[i+1] - samples[i]);
+              samples[i], samples[i+1], samples[i+1] - samples[i],
+              ((flag_f == 1)?((samples[i+1] - samples[i]) / freq):0));
             i++;
         }
 
