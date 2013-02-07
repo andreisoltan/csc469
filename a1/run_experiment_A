@@ -14,18 +14,24 @@
 CPU=0;
 FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
 
-LOGDIR=parta.log.$$
-mkdir $LOGDIR
+LOGCONTAINER=log
+LOGPREFIX=parta
+LOGDIR=$LOGPREFIX.`uname -n`.$$
+mkdir -p $LOGCONTAINER/$LOGDIR
 
+pushd $LOGCONTAINER
+  rm -f $LOGPREFIX.latest # old symlink
+  ln -s $LOGDIR $LOGPREFIX.latest # new symlink
+popd
 
 echo "Capturing platform data..."
-./platform-info.sh > $LOGDIR/platform-info.log
+./platform-info.sh > $LOGCONTAINER/$LOGDIR/platform-info.log
 
 echo "Inactive periods (on CPU $CPU @ $FREQ MHz)..."
 taskset -c $CPU \
     ./parta \
         -f $FREQ \
-        -t 500 -n 1000 > $LOGDIR/inactive_periods.log
+        -t 500 -n 1000 > $LOGCONTAINER/$LOGDIR/inactive_periods.log
 
 # Check frequency again, for paranoia's sake
 FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
@@ -35,7 +41,7 @@ taskset -c $CPU \
     ./parta \
         -c \
         -f $FREQ \
-        -t 500 -n 1000 > $LOGDIR/context_switch.log
+        -t 500 -n 1000 > $LOGCONTAINER/$LOGDIR/context_switch.log
 
 # TODO: Complete the shell script to:
 #           - run the experiment & get data (should we do the average of multiple
