@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Spit out some info about this machine
+# Spit out some info about this machine. For the 'cat' invocations below we're
+# squashing stderr onto stdout because we're interested in knowing if the file
+# in question exists or not (and its content if it exists)
 
 uname -a
 
