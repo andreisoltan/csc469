@@ -1,4 +1,8 @@
 # Directories
+log/
+
+# Vim temp files
+*.swp
 
 # Object files
 *.o
