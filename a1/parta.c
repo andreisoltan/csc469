@@ -116,8 +116,11 @@ int main(int argc, char **argv) {
     // it here to cycles/millisecond for convenience later.
     freq = freq * (1000000 / 1000);
 
-    // Storage space for recorded samples
-    samples = malloc(sizeof(u_int64_t)*num);
+    // Storage space for recorded samples, we use num+3 to accomodate for: 
+    // - discarding the first active period (on the grounds that we will
+    // likely not have captured the full time period)
+    // - leaving room to write the last pair of measurements
+    samples = malloc(sizeof(u_int64_t)*(num+3));
 
     if (!samples) {
         fprintf(stderr, "malloc failed\n");
@@ -154,13 +157,13 @@ int main(int argc, char **argv) {
         } else {
             // child prints first so it puts out the headers:
             printf("%6s\t%6s\t%11s\t%11s\t%11s\t%11s\n",
-//              ((flag_c == 1)?"CHILD":""),
               "CHILD", "ACTIVE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
               ((flag_f == 1)?"LEN-MS":"N/A"));
         }
 
+        // Skip over the first reading (the first partial active period)
         i = 1;
-        while ( i < (num - 2 )) {
+        while ( i < (num + 1)) {
             printf("%6s\t%6s\t%11llu\t%11llu\t%11llu\t%11.8f\n",
               (flag_c && (!childpid))?("yes"):("no"),
               ((i%2)==0)?("yes"):("no"),
@@ -192,7 +195,7 @@ int main(int argc, char **argv) {
  * n is even and represents an inactive period iff n is odd:
  *
  * samples[0] -
- *             } First active period
+ *             } First active period (ignored for output)
  * samples[1] - 
  *             } First inactive period
  * samples[2] -
@@ -212,10 +215,15 @@ inactive_periods(int num, u_int64_t threshold, u_int64_t *samples) {
 	if(!samples)
 		return -1;
 
-    // Begin first active period
+    // Begin first active period -- this will be discarded by the output
+    // phase because we won't have captured the whole time period.
     samples[0] = (last = get_counter());
 
-    while ( i < (num - 1) ) {
+    // We're using num+2 here as the loop boundary because we need to take
+    // n+3 time samples in order discard the initial period (see above) and
+    // be left with num periods as requested.
+    // *samples has space for num+3 readings.
+    while ( i < (num + 2) ) {
         now = get_counter();
 
         // If we have exceeded the threshold, then we must have been
@@ -227,9 +235,6 @@ inactive_periods(int num, u_int64_t threshold, u_int64_t *samples) {
 
         last = now;
     }
-
-    // TODO: Something with the last entry in samples in the case that
-    // we break out of the loop with i = (num - 1)?
 
     // "The function should return the initial reading - that is, the start of
     // the first active period." says the assignment.
@@ -264,13 +269,4 @@ collect_intervals(int num, u_int64_t *samples) {
 
     return samples[0];  
     
-}
-
-u_int64_t
-forking_inactive_periods(int num, u_int64_t *samples) {
-
-
-
-
-
 }
