@@ -155,23 +155,42 @@ int main(int argc, char **argv) {
         if (flag_c && (childpid != 0)) {
             wait(NULL);
         } else {
+
             // child prints first so it puts out the headers:
-            printf("%6s\t%6s\t%11s\t%11s\t%11s\t%11s\n",
-              "CHILD", "ACTIVE", "START-CYCLE", "END-CYCLE", "LEN-CYCLE",
-              ((flag_f == 1)?"LEN-MS":"N/A"));
+            printf("%6s\t%6s\t", "WHO", "STATE");
+
+            if (flag_f) {
+                // milliseconds
+                printf("%12s\t%12s\t%12s\n", "START-MS", "END-MS", "LEN-MS");
+            } else {
+                // cycles
+                printf("%12s\t%12s\t%12s\n",
+                  "START-CYCLE", "END-CYCLE", "LEN-CYCLE");
+            }
         }
 
         // Skip over the first reading (the first partial active period)
         i = 1;
         while ( i < (num + 1)) {
-            printf("%6s\t%6s\t%11llu\t%11llu\t%11llu\t%11.8f\n",
-              (flag_c && (!childpid))?("yes"):("no"),
-              ((i%2)==0)?("yes"):("no"),
-              samples[i], samples[i+1], samples[i+1] - samples[i],
-              ((flag_f == 1)?((samples[i+1] - samples[i]) / freq):0));
+            printf("%6s\t%6s\t",
+              (flag_c && (!childpid))?("child"):("parent"),
+              ((i%2)==0)?("active"):("inact"));
+
+            if (flag_f) {
+                // milliseconds
+                printf("%12.8f\t%12.8f\t%12.8f\n",
+                    samples[i]   / freq,
+                    samples[i+1] / freq,
+                    (samples[i+1] - samples[i]) / freq);
+            } else {
+                // cycles
+                printf("%12llu\t%12llu\t%12llu\n",
+                    samples[i],
+                    samples[i+1],
+                    samples[i+1] - samples[i]);
+            }
             i++;
         }
-
     }
 
     // Cleanup

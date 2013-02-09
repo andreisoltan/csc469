@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Where are we? We expect some utilities to be present in this directory
+CTX=`pwd`
+
+# Default options
+USE_FREQ=1;
+CPU=0;
+THRESH=500;
+NUM=100;
+
+# Logging paths
+LOGCONTAINER=log
+LOGPREFIX=parta
+LOGDIR=$LOGPREFIX.`uname -n`.$$
+LOGPATH=$LOGCONTAINER/$LOGDIR
+
 # Can use taskset to bind process to single CPU (the one that we measure).
 # In order to run foo on cpu0:
 #       taskset -c 0 foo
@@ -10,39 +25,101 @@
 #       sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo
 # The nth line of output corresponds to the clock of processor #(n-1)
 
-# We'll run on the specified CPU, having frequency $FREQ
-CPU=0;
-FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
+get_freq() {
+    sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"
+}
 
-LOGCONTAINER=log
-LOGPREFIX=parta
-LOGDIR=$LOGPREFIX.`uname -n`.$$
-mkdir -p $LOGCONTAINER/$LOGDIR
+USAGE="
+    USAGE:
 
+        $0 [-c | -m] [-t <thresh>] [-n <num>] [-p <processor>]
+
+    Runs trials of our experiments for A1 Part A.
+
+    OPTIONS:
+
+        -c
+            report times in cycle, default false, overridden by -m
+
+        -m
+            reports time in milliseconds, default true, overriden by -c
+
+        -t
+            threshold value passed to parta, defaults to $THRESH
+
+        -n
+            number of samples passed to parta, defaults to $NUM
+
+        -p
+            processor to run on, passed to taskset, defaults to $CPU
+
+"
+
+while getopts "cmt:n:p:" opt; do
+    case $opt in
+        m)
+            USE_FREQ=1;
+            ;;
+        c)
+            USE_FREQ=;
+            ;;
+        t)
+            THRESH=$OPTARG;
+            ;;
+        n)
+            NUM=$OPTARG;
+            ;;
+        p)
+            CPU=$OPTARG;
+            ;;
+        \?)
+            echo "$USAGE" >&2;
+            exit 1;
+            ;;
+    esac
+done
+
+# Logging set-up
+mkdir -p $LOGPATH
 pushd $LOGCONTAINER
   rm -f $LOGPREFIX.latest # old symlink
   ln -s $LOGDIR $LOGPREFIX.latest # new symlink
 popd
 
+###############################################################################
+# Begin experiment...
+
+SUMMARY="CPU=$CPU, THRESH=$THRESH, NUM=$NUM, USE_FREQ=$USE_FREQ";
+echo $SUMMARY
+echo $SUMMARY > $LOGPATH/platform-info.log;
+
 echo "Capturing platform data..."
-./platform-info.sh > $LOGCONTAINER/$LOGDIR/platform-info.log
+./platform-info.sh >> $LOGPATH/platform-info.log
+
+ARGS="-t $THRESH -n $NUM"
+
+if [ $USE_FREQ ]; then
+    FREQ=`get_freq`
+    ARGS="$ARGS -f $FREQ"
+fi
 
 echo "Inactive periods (on CPU $CPU @ $FREQ MHz)..."
 taskset -c $CPU \
-    ./parta \
-        -f $FREQ \
-        -t 500 -n 1000 > $LOGCONTAINER/$LOGDIR/inactive_periods.log
+    ./parta $ARGS > $LOGPATH/inactive_periods.log
 
-# Check frequency again, for paranoia's sake
-FREQ=`sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"`;
+if [ $USE_FREQ ]; then
+    # Refresh frequency
+    FREQ=`get_freq`
+fi
 
 echo "Context switching (on CPU $CPU @ $FREQ MHz)..."
 taskset -c $CPU \
-    ./parta \
-        -c \
-        -f $FREQ \
-        -t 500 -n 1000 > $LOGCONTAINER/$LOGDIR/context_switch.log
+    ./parta -c $ARGS > $LOGPATH/context_switch.log
 
+pushd $LOGPATH
+    $CTX/plot-parta.awk inactive_periods.log | gnuplot
+    $CTX/plot-parta.awk context_switch.log | gnuplot
+popd
 # TODO: Complete the shell script to:
 #           - run the experiment & get data (should we do the average of multiple
 #            runs or something?)           
