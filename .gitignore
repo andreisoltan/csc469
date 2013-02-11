@@ -1,5 +1,6 @@
 # Directories
 log/
+testsub/
 
 # Vim temp files
 *.swp
