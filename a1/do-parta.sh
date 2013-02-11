@@ -72,7 +72,7 @@ ARGS="-n $NUM"
 
 if [ $FLAG_T ]; then
     ARGS="$ARGS -t $THRESH"
-if
+fi
 
 if [ $FLAG_I ]; then
     ARGS="$ARGS -i"
