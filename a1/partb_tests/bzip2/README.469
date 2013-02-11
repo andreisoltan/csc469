@@ -1,0 +1,20 @@
+Instructions for running bzip2 with benchmark inputs...
+
+The data/ directory contains the SPEC input data for three "sizes" of runs.
+You are probably most interested in the train/input subdirectory. (test/ will be
+too short for interesting measurements and ref/ will take too long).  The
+all/input subdirectory contains two inputs that are used by each of the benchmark
+"sizes", but with different settings for bzip2.
+
+For example, the train/input/control file specifies three tests for bzip2.
+If all the inputs are placed in the same directory with the executable, you
+could run these as:
+
+time ./bzip2-02 input.program 10
+time ./bzip2-O2 byoudoin.jpg 5
+time ./bzip2-02 input.combined 80
+
+(And similarly for the bzip2-O3  versions)
+
+The byoudoin.jpg file is found in the data/train/input/ directory, while the
+other two input files are found in the data/all/input directory, originally.
