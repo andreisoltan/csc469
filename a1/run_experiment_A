@@ -3,81 +3,11 @@
 # Where are we? We expect some utilities to be present in this directory
 CTX=`pwd`
 
-# Default options
-USE_FREQ=1;
-CPU=0;
-THRESH=500;
-NUM=100;
-
 # Logging paths
 LOGCONTAINER=log
 LOGPREFIX=parta
 LOGDIR=$LOGPREFIX.`uname -n`.$$
 LOGPATH=$LOGCONTAINER/$LOGDIR
-
-# Can use taskset to bind process to single CPU (the one that we measure).
-# In order to run foo on cpu0:
-#       taskset -c 0 foo
-
-# Finding clock speeds:
-# We can get a list of the clock speeds of each processor on this system with
-# the following command:
-#       sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo
-# The nth line of output corresponds to the clock of processor #(n-1)
-
-get_freq() {
-    sed -n 's/cpu MHz[^:]*: //p' </proc/cpuinfo | sed -n "$((CPU+1)) s/\(.\)/\1/p"
-}
-
-USAGE="
-    USAGE:
-
-        $0 [-c | -m] [-t <thresh>] [-n <num>] [-p <processor>]
-
-    Runs trials of our experiments for A1 Part A.
-
-    OPTIONS:
-
-        -c
-            report times in cycle, default false, overridden by -m
-
-        -m
-            reports time in milliseconds, default true, overriden by -c
-
-        -t
-            threshold value passed to parta, defaults to $THRESH
-
-        -n
-            number of samples passed to parta, defaults to $NUM
-
-        -p
-            processor to run on, passed to taskset, defaults to $CPU
-
-"
-
-while getopts "cmt:n:p:" opt; do
-    case $opt in
-        m)
-            USE_FREQ=1;
-            ;;
-        c)
-            USE_FREQ=;
-            ;;
-        t)
-            THRESH=$OPTARG;
-            ;;
-        n)
-            NUM=$OPTARG;
-            ;;
-        p)
-            CPU=$OPTARG;
-            ;;
-        \?)
-            echo "$USAGE" >&2;
-            exit 1;
-            ;;
-    esac
-done
 
 # Logging set-up
 mkdir -p $LOGPATH
@@ -86,40 +16,49 @@ pushd $LOGCONTAINER
   ln -s $LOGDIR $LOGPREFIX.latest # new symlink
 popd
 
-###############################################################################
-# Begin experiment...
+# Begin experiments, we'll use CPU 0 arbitrarily. We're trying to run this on
+# an unloaded machine anyway.
+CPU=0
 
-SUMMARY="CPU=$CPU, THRESH=$THRESH, NUM=$NUM, USE_FREQ=$USE_FREQ";
-echo $SUMMARY
-echo $SUMMARY > $LOGPATH/platform-info.log;
+echo "Capturing platform data..." #############################################
+./platform-info.sh >| $LOGPATH/platform_info.log
 
-echo "Capturing platform data..."
-./platform-info.sh >> $LOGPATH/platform-info.log
+echo "Observing interval lengths..." ##########################################
+INT_LOG=intervals
+do-parta.sh -p $CPU -i -n 10000 | sort -n | uniq -c | awk '{print $2, $1}' \
+    >| $LOGPATH/$INT_LOG.log
 
-ARGS="-t $THRESH -n $NUM"
+echo "Observing inactive periods... " #########################################
+INACT_LOG=inactive_periods
+do-parta.sh -p $CPU -t 600 -n 100 -m >| $LOGPATH/$INACT_LOG-ms.log
+do-parta.sh -p $CPU -t 600 -n 100    >| $LOGPATH/$INACT_LOG-cycle.log
 
-if [ $USE_FREQ ]; then
-    FREQ=`get_freq`
-    ARGS="$ARGS -f $FREQ"
-fi
+echo "Observing context switching... " ########################################
+CONS_LOG=context_switch
+do-parta.sh -p $CPU -c -t 600 -n 100 -m >| $LOGPATH/$CONS_LOG-ms.log
+do-parta.sh -p $CPU -c -t 600 -n 100    >| $LOGPATH/$CONS_LOG-cycle.log
 
-echo "Inactive periods (on CPU $CPU @ $FREQ MHz)..."
-taskset -c $CPU \
-    ./parta $ARGS > $LOGPATH/inactive_periods.log
 
-if [ $USE_FREQ ]; then
-    # Refresh frequency
-    FREQ=`get_freq`
-fi
-
-echo "Context switching (on CPU $CPU @ $FREQ MHz)..."
-taskset -c $CPU \
-    ./parta -c $ARGS > $LOGPATH/context_switch.log
-
+echo "Generating report..." ###################################################
 pushd $LOGPATH
-    $CTX/plot-parta.awk inactive_periods.log | gnuplot
-    $CTX/plot-parta.awk context_switch.log | gnuplot
+    # Pull in a copy of the current report.tex, generate our figures and create
+    # the PDF
+
+    cp -a $CTX/report.tex .
+    $CTX/plot-parta.awk  $INACT_LOG-ms.log    | gnuplot
+    $CTX/plot-parta.awk  $INACT_LOG-cycle.log | gnuplot
+
+    $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
+    $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
+    
+    $CTX/plot-histogram.sh $INT_LOG.log $INT_LOG.tex
+
+    latex report.tex
+    latex report.tex
+    dvips -o report.ps report.dvi
+    ps2pdf report.ps
 popd
+
 # TODO: Complete the shell script to:
 #           - run the experiment & get data (should we do the average of multiple
 #            runs or something?)           

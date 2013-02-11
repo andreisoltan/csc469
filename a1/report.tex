@@ -1,6 +1,6 @@
 \documentclass{article}
 \usepackage{fullpage}
-%\usepackage{graphicx}
+\usepackage{graphicx}
 
 \author{Andrei Soltan \and Jonathan Prindiville}
 \title{CSC469: Assignment 1}
@@ -16,14 +16,15 @@
 \section{Introduction}
 (goals, etc.)
 
-\section{HEY! NOTES! FIXME}
-- find-empty-wkstn.sh to find empty machines
-- parta -i to explore intervals
-  - ./parta -i -n 20000 | sort -n | uniq -c "histogram"
-- found to be wide split between 300/6000
+\section{TODO}
+- platform data for b3195 workstatins
+- histogram data / graph / explanation choosing threshold
+- inactive periods data / graph / explanation of choice
+- questions
 
 \newpage
 \section{Part A: Performance measurement}
+
 (With what frequency do timer interrupts occur? How long does it take to handle a timer interrupt?)
 (If it appears that there are other, non-timer interrupts (that is, other short periods of inactivity that don't fit the pattern of the periodic timer interrupt), explain what these are likely to be, based on what you can determine about other activity on the system you are measuring.)
 (Over the period of time that the process is running (that is, without lengthy interruptions corresponding to a switch to another process), what percentage of time is lost to servicing interrupts (of any kind)?)
@@ -33,6 +34,13 @@
 (include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
 \subsubsection{Results}
 (Insert tabular, graphical results, discussion)
+\begin{center}
+    \begin{figure}[h]
+        \caption{Active (red) and inactive (grey) periods of execution}
+        \input{inactive_periods-ms}
+    \end{figure}
+\end{center}
+
 
 \subsection{Context switches}
 (How long is a time slice? That is, how long does one process get to run before it is forced to switch to another process?)
@@ -43,6 +51,10 @@
 (include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
 \subsubsection{Results}
 (Insert tabular, graphical results, discussion)
+\begin{figure}[h]
+    \caption{A picture of a gull... or not}
+    \input{context_switch-ms}
+\end{figure}
 
 \newpage
 \section{Part B: Measurement bias}
@@ -56,9 +68,21 @@
 
 \newpage
 \appendix
-
 \section{Tools}
 (Include an appendix that describes how to use your benchmark tools so that someone else could reproduce your experiments.)
+\subsection{count-users.sh}
+Used a proof of concept for find-empty-wkstn. Counts the number of currently
+logged in users.
+\subsection{find-empty-wkstn.sh}
+Used to identify CDF workstations that are currently unnocupied. We used free lab machines torun many of our tests.
+\subsection{platform-info.sh, gather-platform-info.sh}
+Used to get a sense of the hardware available in each of the CDF labs. Of particular interes was the use of dynamic cpu frequency adjustments -- something that we were trying to avoid.
+\subsection{plot-histogram.sh}
+Used to determine a suitable threshold value for our other experiments.
+\subsection{plot-parta.awk}
+Transforms output from part a trials (inactive periods, context switching) into gnuplot input.
+
+
 %Check out the random bars in figure \ref{fig:random}.
 %\begin{figure}
 %\centering

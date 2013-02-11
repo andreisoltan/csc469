@@ -15,19 +15,31 @@ tsc.o: tsc.c tsc.h
 submit: a1.tgz
 	echo "\nTo submit, execute 'submit -c csc469h -a a1 a1.tgz'"
 
+test-submit: submit
+	rm -rf testsub
+	mkdir testsub
+	cp a1.tgz testsub
+	tar -C testsub -xzf a1.tgz
+	rm -f a1.tgz
+	mv testsub/report.pdf testsub/original-report.pdf
+#	make -C testsub submit
+
 # Submission tarball
-a1.tgz: docs build
-	tar -czvf $@ report.pdf parta.c run_experiment_A count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh README Makefile tsc.c tsc.h
+a1.tgz: run
+	ln -fs log/parta.latest/report.pdf
+	tar -hczvf $@ \
+        README Makefile \
+        count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh \
+        tsc.c tsc.h \
+        parta.c \
+        do-parta.sh run_experiment_A  \
+        plot-parta.awk plot-histogram.sh \
+        report.tex report.pdf
+	rm -f report.pdf
 
-# Add gnuplot generation...
-docs: report.pdf
-
-report.pdf: report.tex
-	latex report.tex
-	latex report.tex
-	dvips -o report.ps report.dvi
-	ps2pdf report.ps
+run: build
+	./run_experiment_A
 
 # Add cleanup for program compilation...
 clean:
-	rm -rf report.aux report.dvi report.log report.pdf report.ps report.toc a1.tgz *.o parta
+	rm -rf *.aux *.dvi *.log *.pdf *.ps *.toc a1.tgz *.o parta
