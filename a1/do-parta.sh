@@ -4,8 +4,9 @@
 FLAG_I=;
 FLAG_M=;
 FLAG_C=;
+FLAG_T=;
 CPU=0;
-THRESH=500;
+THRESH=;
 NUM=100;
 
 get_freq() {
@@ -29,8 +30,7 @@ USAGE="
         -m  report time in milliseconds, default to false (report in cycles)
         -c  context switching, passed to parta, defaults to false
         -i  interval mode, passed to parta, defaults to false, overrides -t, -c
-        -t  threshold for inactivity measurement, passed to parta, defaults to
-            $THRESH, overriden by -i
+        -t  threshold for inactivity measurement, passed to parta, overriden by -i
         -n  number of samples passed to parta, defaults to $NUM
         -p  processor to run on, passed to taskset, defaults to $CPU. taskset
             will complain if you choose something invalid.
@@ -51,6 +51,7 @@ while getopts "icmt:n:p:" opt; do
             FLAG_C=1;
             ;;
         t)
+            FLAG_T=1;
             THRESH=$OPTARG;
             ;;
         n)
@@ -67,7 +68,11 @@ while getopts "icmt:n:p:" opt; do
 done
 
 ### Build arguments
-ARGS="-t $THRESH -n $NUM"
+ARGS="-n $NUM"
+
+if [ $FLAG_T ]; then
+    ARGS="$ARGS -t $THRESH"
+if
 
 if [ $FLAG_I ]; then
     ARGS="$ARGS -i"
