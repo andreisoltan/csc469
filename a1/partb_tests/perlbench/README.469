@@ -1,0 +1,24 @@
+Instructions for running perlbench with benchmark inputs...
+
+The data/ directory contains the SPEC input data for three "sizes" of runs.
+You are probably most interested in the train/input subdirectory. (test/ will be
+too short for interesting measurements and ref/ will take too long).  The
+all/input subdirectory contains inputs that are used by each of the benchmark
+"sizes", including some perl modules.
+
+The *.in files in the data/<size>/input/ directory specify the inputs or 
+arguments for the perl test programs.
+
+To set up, you should combine the data/all/input/ directory with the 
+data/train/input directory (in a new "run" directory). For diffmail.pl, 
+splitmail.pl and perfect.pl, the corresponding .in file contains one uncommented line that should be used as the arguments to the perl program.
+
+For example,
+time perlbench-O2 diffmail.pl 2 550 15 24 23 100
+time perlbench-O2 perfect.pl b 3
+
+For scrabbl.pl, however, the scrabbl.in file is a list of words that should be provided via stdin. For example, 
+
+time perlbench-O2 scrabbl.pl < scrabbl.in
+
+
