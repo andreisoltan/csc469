@@ -9,4 +9,6 @@ NR>1 {
 END {
     print "a:", time["active"]
     print "i:", time["inact"]
+
+    print "i/(a+i):", time["inact"] / (time["active"] + time["inact"])
 }
