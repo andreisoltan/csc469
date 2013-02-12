@@ -8,11 +8,13 @@ if [ $# -ne 3 ]; then
         $0 <lab> <command> <log>
         
     Runs <command> on all free machine in <lab>, logs each into
-    <log>-<wkstn>.log
+    <log>-<wkstn>-\`date +%s\`.log
     "  >&2
     exit 1;
 fi
 
+SUFFIX=`date +%s`.log
+
 for wkstn in `find-empty-wkstn.sh $1`; do
-    ssh $wkstn "cd $CTX && $2 >| $3-$wkstn.log"
+    ssh $wkstn "cd $CTX && $2 >| $3-$wkstn-$SUFFIX"
 done
