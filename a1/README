@@ -1,0 +1,18 @@
+In order to run our experiments and generate report.pdf all that is required
+is to execute run_experiment_A. The report (and most other output) will be
+found in the log/ directory in subdirectories labelled with the host and PID
+from whence they were generated. The most recently generated log directory will
+always be symlinked at log/parta.latest
+
+If you wish to generate any further data of your own, parta is where to get it.
+Executing parta with no arguments will generate a usage message with details of
+its invocation.
+
+Should you wish to receive output in milliseconds rather than cycles, the
+simplest method would be to use do-parta.sh. Run without any arguments it
+will supply you with a usage message. In order to have it extract the current
+frequency and pass it in to parta, use the -m flag.
+
+run_experiment_A has some good example invocations of both the information
+gathering tool, parta (and do-parta.sh), and also some examples of processing
+the output.
