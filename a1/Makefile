@@ -28,13 +28,14 @@ test-submit: submit
 a1.tgz: run
 	ln -fs log/parta.latest/report.pdf
 	tar -hczvf $@ \
-        README Makefile \
-        count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh \
-        tsc.c tsc.h \
-        parta.c \
-        do-parta.sh run_experiment_A  \
-        plot-parta.awk plot-histogram.sh \
-        report.tex report.pdf
+	  README Makefile \
+	  active-inactive.awk minions.sh \
+	  count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh \
+	  tsc.c tsc.h \
+	  parta.c \
+	  do-parta.sh run_experiment_A  \
+	  plot-parta.awk \
+	  report.tex report.pdf
 	rm -f report.pdf
 
 run: build
