@@ -169,7 +169,10 @@ Taking the output from \lstinline{parta -c}, we sort by start time and select
 out the lines which show inactivity for lengths similar to the timeslice
 discussed above\footnote{run\_experiment\_A hardcodes the value of 8 into its
 code for extracting this data -- if you are running this on a machine with a
-different timeslice, you may not see much of anything in the following listing}
+different timeslice, you may not see much of anything in the following listing.
+% Hey Andrei, if you're wondering about these guys VVVVVV I am replacing
+FYI, this document was put together on @@@DATE@@@ by @@@UNAME@@@.}
+% them in run_experiment_A after this file is copied into the log directory
 and the line immediately following -- the other process going
 into its active state. With some sed and awk massaging, we compute the
 difference between the start time of the inactive period and the other

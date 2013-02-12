@@ -46,7 +46,7 @@ do-parta.sh -p $CPU -i -n 10000 | sort -n | uniq -c | awk '{print $2, $1}' \
 echo "Observing inactive periods... " #########################################
 INACT_LOG=inactive_periods
 do-parta.sh -p $CPU -t 600 -n 100 -m >| $LOGPATH/$INACT_LOG-ms.log
-do-parta.sh -p $CPU -t 600 -n 100    >| $LOGPATH/$INACT_LOG-cycle.log
+#do-parta.sh -p $CPU -t 600 -n 100    >| $LOGPATH/$INACT_LOG-cycle.log
 
 echo "Computing timer interrupt timing... " ###################################
 TIME_LOG=timer
@@ -60,7 +60,7 @@ append_avg $LOGPATH/$TIME_LOG.log
 echo "Observing context switching... " ########################################
 CONS_LOG=context_switch
 do-parta.sh -p $CPU -c -t 600 -n 100 -m >| $LOGPATH/$CONS_LOG-ms.log
-do-parta.sh -p $CPU -c -t 600 -n 100    >| $LOGPATH/$CONS_LOG-cycle.log
+#do-parta.sh -p $CPU -c -t 600 -n 100    >| $LOGPATH/$CONS_LOG-cycle.log
 
 echo "Computing context switch timing..." #####################################
 SWT_LOG=switch_time
@@ -90,10 +90,14 @@ append_avg $LOGPATH/$PRO_LOG.log
 
 echo "Generating report..." ###################################################
 pushd $LOGPATH
-    # Pull in a copy of the current report.tex, generate our figures and create
-    # the PDF
-
+    # Pull in a copy of the current report.tex, insert some build details,
+    # generate our figures and create the PDF
     cp -a $CTX/report.tex .
+    sed -i \
+        -e "s/@@@UNAME@@@/`uname -n`/" \
+        -e "s/@@@DATE@@@/`date --rfc-3339=seconds`/" \
+        report.tex;
+
     $CTX/plot-parta.awk  $INACT_LOG-ms.log    | gnuplot
     $CTX/plot-parta.awk  $INACT_LOG-cycle.log | gnuplot
 
