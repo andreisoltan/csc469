@@ -1,10 +1,22 @@
 \documentclass{article}
 \usepackage{fullpage}
 \usepackage{graphicx}
+\usepackage{listings}
+\usepackage{framed}
+\usepackage{multicol}
+\usepackage{hyperref}
 
 \author{Andrei Soltan \and Jonathan Prindiville}
 \title{CSC469: Assignment 1}
 \date{11 February, 2013}
+
+% Show paragraphs in table of contents
+\setcounter{tocdepth}{5}
+
+\lstset{
+    basicstyle=\small,
+    stringstyle=\ttfamily, % typewriter type for strings
+    showstringspaces=false } % no special string spaces
 
 \begin{document}
 
@@ -14,7 +26,15 @@
 
 \newpage
 \section{Introduction}
-(goals, etc.)
+Our goal in this assignment is to develop our understanding of performance
+measurement and benchmarking as it relates to operating systems -- Linux 3.2
+in particular.
+
+Section~\ref{sec:A} contains our exploration of timer interrupts and context
+switching between two processes.
+
+Section~\ref{sec:B} will attempt to examine the effect of measurement bias
+on several programs, bzip2, lbm and perlbench.
 
 \section{TODO}
 - platform data for b3195 workstatins
@@ -24,22 +44,60 @@
 
 \newpage
 \section{Part A: Performance measurement}
+\label{sec:A}
 
 (With what frequency do timer interrupts occur? How long does it take to handle a timer interrupt?)
 (If it appears that there are other, non-timer interrupts (that is, other short periods of inactivity that don't fit the pattern of the periodic timer interrupt), explain what these are likely to be, based on what you can determine about other activity on the system you are measuring.)
 (Over the period of time that the process is running (that is, without lengthy interruptions corresponding to a switch to another process), what percentage of time is lost to servicing interrupts (of any kind)?)
 
 \subsection{Tracking process activity}
+
 \subsubsection{Methodology}
-(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+In order to answer the questions that we have, we will be using data collected
+from the Pentium TSC register. We'll use the program \lstinline{parta} in order
+to collect that data. We first must establish a threshold for the timer
+measurements -- above which we will assume that the process has been inactive.
+After finding that threshold value, we'll be able to use \lstinline{parta} to
+produce a plot showing a process' active and inactive periods over time.
+
+To reduce the number of potentially conflicting processes running on the same
+machine, we've written a script (see~\ref{tool:find-empty}) to find empty
+workstations in the CDF laboratories. Because we hope to extract measurements
+in milliseconds, we are choosing to avoid those workstations which use cpufreq
+to dynamically set their clock speed.
+
 \subsubsection{Results}
 (Insert tabular, graphical results, discussion)
+
+\paragraph{Threshold}
+In order to find our inactivity threshold we will be using
+\lstinline{parta -i -n <num>}. In this mode of operation, we collect
+\lstinline{<num>} timer samples in a tight loop and output the difference
+between successive samples. Sorting this output and counting intervals of the
+same length \footnote{Using \lstinline{sort}, \lstinline{uniq -c}, and
+\lstinline{awk}} we will get output like the following, where the left column
+represents interval length and the right, number of intervals:
+\begin{framed}
+    \label{lst:intervals}
+    \lstinputlisting[multicols=3]{intervals.log}
+\end{framed}
+
+It is clear from the above that the vast majority (\textgreater~99\%) of the
+intervals are on the order of one hundred cycles in length. Depending on the
+machine, the next smallest interval length tends to be in the 3000-6000 cycle
+range. Accordingly, we will use a threshold of 600 cycles in our next
+experiment to detect process inactivity.
+
+\paragraph{Process inactivity}
+In order to chart process activity
+
 \begin{center}
     \begin{figure}[h]
-        \caption{Active (red) and inactive (grey) periods of execution}
+        \caption{Inactive (grey) and active (red) periods of execution}
         \input{inactive_periods-ms}
     \end{figure}
 \end{center}
+(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
 
 
 \subsection{Context switches}
@@ -52,12 +110,14 @@
 \subsubsection{Results}
 (Insert tabular, graphical results, discussion)
 \begin{figure}[h]
-    \caption{A picture of a gull... or not}
+    \caption{Inactive (grey) and active periods of execution for parent (red)
+    and child (blue) processes}
     \input{context_switch-ms}
 \end{figure}
 
 \newpage
 \section{Part B: Measurement bias}
+\label{sec:B}
 (How significant is measurement bias due to Unix environment size on current systems?)
 (To what extent does Linux ASLR (address space layout randomization) affect measured performance? Does it mitigate or exacerbate the effect of Unix environment size?)
 (What underlying architectural events in the microprocessor appear to be causing the measurement bias?)
@@ -70,15 +130,42 @@
 \appendix
 \section{Tools}
 (Include an appendix that describes how to use your benchmark tools so that someone else could reproduce your experiments.)
+
 \subsection{count-users.sh}
 Used a proof of concept for find-empty-wkstn. Counts the number of currently
 logged in users.
+
 \subsection{find-empty-wkstn.sh}
-Used to identify CDF workstations that are currently unnocupied. We used free lab machines torun many of our tests.
+\label{tool:find-empty}
+Used to identify CDF workstations that are currently unnocupied. We used free
+lab machines to run many of our tests. A little work with \lstinline{ping}
+revealed the number of machines in each lab and this script simply loops over
+the machines in a specified lab, checking them with \lstinline{count-users.sh}.
+
 \subsection{platform-info.sh, gather-platform-info.sh}
-Used to get a sense of the hardware available in each of the CDF labs. Of particular interes was the use of dynamic cpu frequency adjustments -- something that we were trying to avoid.
+\label{tool:platform}
+Used to get a sense of the hardware available in each of the CDF labs. Of particular interest was the use of dynamic cpu frequency adjustments -- something that we were trying to avoid. 
+
+\begin{tabular}{ | c | c | c | c | c | c |}
+\hline
+LAB   & MODEL NO      & Max Frq & N Cores & RAM  & cpufreq governor \\
+\hline 
+b2200 & C2Duo E6550   & 2.33GHz & 2 cores &  2GB & ondemand \\
+b2220 & Pentium G630  & 2.70GHz & 2 cores &  8GB & ondemand \\
+b2240 & Core i5 3570  & 3.40GHz & 4 cores & 20GB & ondemand \\
+b3185 & Pentium E2160 & 1.80GHz & 2 cores &  2GB & ondemand \\
+b3200 & Core i5 650   & 3.20GHz & 4 cores &  1GB & ondemand \\
+\hline
+b2210 & P4            & 3.20GHz & 2 cores &  1GB & none \\
+b3175 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+b3195 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+s2360 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+\hline
+\end{tabular}
+
 \subsection{plot-histogram.sh}
 Used to determine a suitable threshold value for our other experiments.
+
 \subsection{plot-parta.awk}
 Transforms output from part a trials (inactive periods, context switching) into gnuplot input.
 
