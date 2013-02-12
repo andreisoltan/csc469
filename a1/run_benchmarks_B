@@ -1,0 +1,24 @@
+CTX=`pwd`
+c="./partb.sh -b"
+f="bzip2"
+ssh b3185-01 "cd $CTX && $c >| $f-b3185-01.log" &
+ssh b3185-02 "cd $CTX && $c >| $f-b3185-02.log" &
+ssh b3185-03 "cd $CTX && $c >| $f-b3185-03.log" &
+ssh b3185-04 "cd $CTX && $c >| $f-b3185-04.log" &
+ssh b3185-05 "cd $CTX && $c >| $f-b3185-05.log" &
+
+c="./partb.sh -l"
+f="lbm"
+ssh b3185-06 "cd $CTX && $c >| $f-b3185-06.log" &
+ssh b3185-07 "cd $CTX && $c >| $f-b3185-07.log" &
+ssh b3185-08 "cd $CTX && $c >| $f-b3185-08.log" &
+ssh b3185-09 "cd $CTX && $c >| $f-b3185-09.log" &
+ssh b3185-10 "cd $CTX && $c >| $f-b3185-10.log" &
+
+c="./partb.sh -p"
+f="perlbench"
+ssh b3185-11 "cd $CTX && $c >| $f-b3185-11.log" &
+ssh b3185-12 "cd $CTX && $c >| $f-b3185-12.log" &
+ssh b3185-13 "cd $CTX && $c >| $f-b3185-13.log" &
+ssh b3185-14 "cd $CTX && $c >| $f-b3185-14.log" &
+ssh b3185-15 "cd $CTX && $c >| $f-b3185-15.log" &
