@@ -6,14 +6,16 @@
 \usepackage{multicol}
 \usepackage{hyperref}
 
-\author{Andrei Soltan \and Jonathan Prindiville}
+\author{Andrei Soltan\\000000000\\g0soltan@cdf.toronto.edu
+\and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
 \title{CSC469: Assignment 1}
-\date{11 February, 2013}
+\date{12 February, 2013}
 
 % Show paragraphs in table of contents
 \setcounter{tocdepth}{5}
 
 \lstset{
+    mathescape=false,
     basicstyle=\small,
     stringstyle=\ttfamily, % typewriter type for strings
     showstringspaces=false } % no special string spaces
@@ -36,20 +38,8 @@ switching between two processes.
 Section~\ref{sec:B} will attempt to examine the effect of measurement bias
 on several programs, bzip2, lbm and perlbench.
 
-\section{TODO}
-- platform data for b3195 workstatins
-- histogram data / graph / explanation choosing threshold
-- inactive periods data / graph / explanation of choice
-- questions
-
-\newpage
 \section{Part A: Performance measurement}
 \label{sec:A}
-
-(With what frequency do timer interrupts occur? How long does it take to handle a timer interrupt?)
-(If it appears that there are other, non-timer interrupts (that is, other short periods of inactivity that don't fit the pattern of the periodic timer interrupt), explain what these are likely to be, based on what you can determine about other activity on the system you are measuring.)
-(Over the period of time that the process is running (that is, without lengthy interruptions corresponding to a switch to another process), what percentage of time is lost to servicing interrupts (of any kind)?)
-
 \subsection{Tracking process activity}
 
 \subsubsection{Methodology}
@@ -61,21 +51,19 @@ After finding that threshold value, we'll be able to use \lstinline{parta} to
 produce a plot showing a process' active and inactive periods over time.
 
 To reduce the number of potentially conflicting processes running on the same
-machine, we've written a script (see~\ref{tool:find-empty}) to find empty
-workstations in the CDF laboratories. Because we hope to extract measurements
-in milliseconds, we are choosing to avoid those workstations which use cpufreq
-to dynamically set their clock speed.
+machine, we've written a script (see appendix~\ref{tool:find-empty})
+to find empty workstations in the CDF laboratories. Because we hope to extract
+measurements in milliseconds, we are choosing to avoid those workstations which
+use cpufreq to dynamically set their clock speed (see appendix~\ref{tool:platform}.)
 
 \subsubsection{Results}
-(Insert tabular, graphical results, discussion)
 
 \paragraph{Threshold}
 In order to find our inactivity threshold we will be using
 \lstinline{parta -i -n <num>}. In this mode of operation, we collect
 \lstinline{<num>} timer samples in a tight loop and output the difference
 between successive samples. Sorting this output and counting intervals of the
-same length \footnote{Using \lstinline{sort}, \lstinline{uniq -c}, and
-\lstinline{awk}} we will get output like the following, where the left column
+same length we will get output like the following, where the left column
 represents interval length and the right, number of intervals:
 \begin{framed}
     \label{lst:intervals}
@@ -89,31 +77,111 @@ range. Accordingly, we will use a threshold of 600 cycles in our next
 experiment to detect process inactivity.
 
 \paragraph{Process inactivity}
-In order to chart process activity
+In order to chart process activity we'll need the threshold value which was
+established in the previous section and the CPU clock frequency. We strip the
+current CPU frequency out of \lstinline{/proc/cpuinfo} with the wrapper script
+\lstinline{do-parta.sh}.
 
+With those two items, we can begin to collect data. Similar to when determining
+the threshold, we sample the cycle counter in a tight loop. Intervals
+of length greater than the threshold value are understood to be times when the
+process was pre-empted by the operating system for some reason. Intervals
+of length less than the threshold value are interpreted as continuous
+activity. Typical output looks like the following (truncated):
+\begin{framed}
+    \label{lst:inactive}
+    \lstinputlisting[lastline=15]{inactive_periods-ms.log}
+\end{framed}
+
+We feed this output into gnuplot to obtain the following graph:
 \begin{center}
     \begin{figure}[h]
+        \label{fig:inactive}
         \caption{Inactive (grey) and active (red) periods of execution}
         \input{inactive_periods-ms}
     \end{figure}
 \end{center}
-(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
 
+Examination of the data reveals a number of things. The process never seems to 
+run for any longer than 4ms without being interrupted. Those are likely to be
+the timer interrupts.
+
+If the process is running uncontested, it is able to take advantage of most of
+the processor time. Using samples from a number of unoccupied CDF workstations
+in b3175, we sum up the inactive periods and express it as a proportion of the
+total run time (inactive periods + active periods) and get the following:
+\begin{framed}
+    \label{lst:proportion}
+    \lstinputlisting[multicols=3]{proportion.log}
+\end{framed}
+Notice the last line indicate that on average (leaving aside the largest and
+smallest values) our samples spent less than one percent of their running time
+in an inactive state.
+
+For those times that the process has been interrupted by the timer, we see a
+very fast handling time. Using samples from an unoccupied CDF machine,
+we've selected out the inactive intervals immediately following those active
+periods of 3+ milliseconds -- those that were likely
+pre-empted by the timer. Below is a listing of those samples and the average
+time in milliseconds:
+\begin{framed}
+    \label{lst:timer}
+    \lstinputlisting[multicols=3]{timer.log}
+\end{framed}
 
 \subsection{Context switches}
-(How long is a time slice? That is, how long does one process get to run before it is forced to switch to another process?)
-(Is the length of the time slice affected by the number of processes that you are using?)
-(Are you surprised by your measurements?)
-(How does it compare to what you were told about time slices in your previous OS course?)
+
 \subsubsection{Methodology}
-(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+In order to explore context switching, we were able to use much of the same
+code as was used for the process activity experiments in the previous section.
+Again, we've taken advantage of empty CDF workstations to run trials.
+Specifically those not using adaptive CPU clocks (see the table in 
+appendix~\ref{tool:platform}).
+
+When \lstinline{parta} is invoked with the -c flag it will perform the same
+timing as described above, accepting
+\lstinline{-t <thresh> -n <num> and -f <freq>} arguments. The only
+difference is that a child will be forked just prior to the beginning of
+data collection. Both parent and child collect their data competing for
+CPU time and then the parent waits for the child to exit before printing
+(to avoid mixing up the output). The output has the same format as that shown
+above for the inactive periods (see~\ref{lst:inactive}),  but there are entries
+for both child (first) and parent.
+
 \subsubsection{Results}
-(Insert tabular, graphical results, discussion)
+The following graph was generated from our output.
 \begin{figure}[h]
     \caption{Inactive (grey) and active periods of execution for parent (red)
     and child (blue) processes}
     \input{context_switch-ms}
 \end{figure}
+
+We see a clear trading off of processor time, this may not be the case with 
+more than two ready processes, but we have been careful to choose unloaded
+systems for our trials.
+
+From the figure above and our data, we observe that the timeslices appear to
+be around 8ms, or two timer interrupts. On the compute servers greywolf and 
+redwolf, the time slices that we were seeing were 16ms.
+
+With the data we've collected we can approximate the cost of a context switch.
+Taking the output from \lstinline{parta -c}, we sort by start time and select
+out the lines which show inactivity for lengths similar to the timeslice
+discussed above\footnote{run\_experiment\_A hardcodes the value of 8 into its
+code for extracting this data -- if you are running this on a machine with a
+different timeslice, you may not see much of anything in the following listing}
+and the line immediately following -- the other process going
+into its active state. With some sed and awk massaging, we compute the
+difference between the start time of the inactive period and the other
+process' active period. A listing of those differences with computed average
+(dropping the lowest and highest values) appears below:
+\begin{framed}
+    \label{lst:switch_time}
+    \lstinputlisting[multicols=3]{switch_time.log}
+\end{framed}
+
+A surpising result is that the time to handle a context switch is not a great
+deal higher than the time we computed for the handling of a timer interrupt.
 
 \newpage
 \section{Part B: Measurement bias}
@@ -129,53 +197,73 @@ In order to chart process activity
 \newpage
 \appendix
 \section{Tools}
-(Include an appendix that describes how to use your benchmark tools so that someone else could reproduce your experiments.)
 
-\subsection{count-users.sh}
-Used a proof of concept for find-empty-wkstn. Counts the number of currently
-logged in users.
+\subsection{run\_experiment\_A} \label{tool:run}
+This is the main driver for the data collection in section~\ref{sec:A}.
+It runs do-parta.sh (see appendix~\ref{tool:parta}) in various permutations
+and then massages the output into something suitable for gnuplot or for direct
+analysis. We tend to run it on unoccupied lab machines through ssh.
 
-\subsection{find-empty-wkstn.sh}
-\label{tool:find-empty}
+This report is generated after the experiments have completed.
+
+
+\subsection{parta} \label{tool:parta}
+Main information gathering tool used in section~\ref{sec:A}. Collects samples
+from the TSC register using the provided tsc.c and tsc.h code.
+
+\subsection{do-parta.sh} \label{tool:do-parta}
+Wrapper for parta (see appendix~\ref{tool:parta}). Main value added is the
+ability to select which CPU it will run on, and to extract and pass in the
+current CPU clock frequency.
+
+\subsection{count-users.sh} \label{tool:count-users.sh}
+Used to implement find-empty-wkstn.sh (see appendix~\ref{tool:find-empty}).
+Counts the number of unique users currently logged in.
+
+\subsection{find-empty-wkstn.sh} \label{tool:find-empty}
 Used to identify CDF workstations that are currently unnocupied. We used free
 lab machines to run many of our tests. A little work with \lstinline{ping}
 revealed the number of machines in each lab and this script simply loops over
 the machines in a specified lab, checking them with \lstinline{count-users.sh}.
 
-\subsection{platform-info.sh, gather-platform-info.sh}
-\label{tool:platform}
-Used to get a sense of the hardware available in each of the CDF labs. Of particular interest was the use of dynamic cpu frequency adjustments -- something that we were trying to avoid. 
+For politeness it does a bit of waiting between subsequent checks.
 
-\begin{tabular}{ | c | c | c | c | c | c |}
-\hline
-LAB   & MODEL NO      & Max Frq & N Cores & RAM  & cpufreq governor \\
-\hline 
-b2200 & C2Duo E6550   & 2.33GHz & 2 cores &  2GB & ondemand \\
-b2220 & Pentium G630  & 2.70GHz & 2 cores &  8GB & ondemand \\
-b2240 & Core i5 3570  & 3.40GHz & 4 cores & 20GB & ondemand \\
-b3185 & Pentium E2160 & 1.80GHz & 2 cores &  2GB & ondemand \\
-b3200 & Core i5 650   & 3.20GHz & 4 cores &  1GB & ondemand \\
-\hline
-b2210 & P4            & 3.20GHz & 2 cores &  1GB & none \\
-b3175 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
-b3195 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
-s2360 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
-\hline
+\subsection{platform-info.sh, gather-platform-info.sh} \label{tool:platform}
+Used to get a sense of the hardware available in each of the CDF labs. Of
+particular interest was the use of dynamic cpu frequency adjustments --
+something that we were trying to avoid in the experiments of
+section~\ref{sec:A}.
+
+\begin{center}
+    \begin{tabular}{ | c | c | c | c | c | c |}
+    \hline
+    LAB   & MODEL NO      & Max Frq & N Cores & RAM  & cpufreq governor \\
+    \hline 
+    b2200 & C2Duo E6550   & 2.33GHz & 2 cores &  2GB & ondemand \\
+    b2220 & Pentium G630  & 2.70GHz & 2 cores &  8GB & ondemand \\
+    b2240 & Core i5 3570  & 3.40GHz & 4 cores & 20GB & ondemand \\
+    b3185 & Pentium E2160 & 1.80GHz & 2 cores &  2GB & ondemand \\
+    b3200 & Core i5 650   & 3.20GHz & 4 cores &  1GB & ondemand \\
+    \hline
+    b2210 & P4            & 3.20GHz & 2 cores &  1GB & none \\
+    b3175 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+    b3195 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+    s2360 & C2 6300       & 1.86GHz & 2 cores &  1GB & none \\
+    \hline
 \end{tabular}
-
-\subsection{plot-histogram.sh}
-Used to determine a suitable threshold value for our other experiments.
+\end{center}
 
 \subsection{plot-parta.awk}
-Transforms output from part a trials (inactive periods, context switching) into gnuplot input.
+Transforms output from parta (see~\ref{tool:parta}) inactivity or 
+context-switching trials into gnuplot input.
 
+\subsection{active-inactive.awk} \label{tool:active-inactive}
+Given output from parts (see~\ref{tool:parta}) this computes the amount of time
+spent in the active and inactive states as well as the ratio of inactive to
+total time.
 
-%Check out the random bars in figure \ref{fig:random}.
-%\begin{figure}
-%\centering
-%\includegraphics[scale=1.25]{random.eps}
-%\caption{Random intervals (red).}
-%\label{fig:random}
-%\end{figure}
-
+\subsection{minions.sh} \label{tool:minions}
+Given a lab name, a job and the basename for its log files, minions.sh
+uses find-empty-wkstn.sh (see~\ref{tool:find-empty}) in order to launch jobs on
+all of the empty workstations in that lab.
 \end{document}
