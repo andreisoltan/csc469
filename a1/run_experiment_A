@@ -1,10 +1,25 @@
 #!/bin/bash
 
+##############################################################################
+###### Welcome to run_experiment_A, we hope you enjoy your stay with us ######
+##############################################################################
+
+append_avg() {
+# Read in from $1, assuming one value per line, compute the average of the
+# values having discarded the largest and smallest values, append the
+# computed average to the end of the file
+    awk 'BEGIN{n=0;sum=0} \
+    NR==1{lg=$1;sm=$1;n++;sum+=$1}  \
+    {if ($1>lg) lg=$1; if ($1<sm) sm=$1; n++; sum+=$1} \
+    END {print "avg=" (sum-lg-sm)/(n-2) "; n=" n-2 ";"}' <\
+    $1 >> $1
+}
+
 # Where are we? We expect some utilities to be present in this directory
 CTX=`pwd`
 
 # Logging paths
-LOGCONTAINER=log
+LOGCONTAINER=$CTX/log
 LOGPREFIX=parta
 LOGDIR=$LOGPREFIX.`uname -n`.$$
 LOGPATH=$LOGCONTAINER/$LOGDIR
@@ -33,10 +48,44 @@ INACT_LOG=inactive_periods
 do-parta.sh -p $CPU -t 600 -n 100 -m >| $LOGPATH/$INACT_LOG-ms.log
 do-parta.sh -p $CPU -t 600 -n 100    >| $LOGPATH/$INACT_LOG-cycle.log
 
+echo "Computing timer interrupt timing... " ###################################
+TIME_LOG=timer
+# Grab interval times from inactive periods immediately following where it looks
+# like we got timer interrupted
+grep -A1 '3\.[[:digit:]]*$' $LOGPATH/$INACT_LOG-ms.log | \
+    grep "inact" | awk '{print $5}' >| $LOGPATH/$TIME_LOG.log
+# Compute, append summary
+append_avg $LOGPATH/$TIME_LOG.log
+
 echo "Observing context switching... " ########################################
 CONS_LOG=context_switch
 do-parta.sh -p $CPU -c -t 600 -n 100 -m >| $LOGPATH/$CONS_LOG-ms.log
 do-parta.sh -p $CPU -c -t 600 -n 100    >| $LOGPATH/$CONS_LOG-cycle.log
+
+echo "Computing context switch timing..." #####################################
+SWT_LOG=switch_time
+awk '{print $3, $4, $1, $2, $5}' < $LOGPATH/$CONS_LOG-ms.log | \
+#    sort -n | grep -A1 '1[[:digit:]]\.[[:digit:]]*$' | awk '{print $1}' | \
+# The 8 down there is machine dependant -- on the compute servers the time slice
+# is more like 16
+    sort -n | grep -A1 '8\.[[:digit:]]*$' | awk '{print $1}' | \
+    sed ':a;N;$!ba;s/\n/ /g' | sed 's/--/\n/g' | awk '{print $2 - $1}' \
+    >| $LOGPATH/$SWT_LOG.log
+append_avg $LOGPATH/$SWT_LOG.log
+
+echo "Observing active/inactive proportion..." ################################
+PRO_LOG=proportion
+# Collect data:
+# Maybe bump the n value back up for the final run
+./minions.sh b3175 \
+    "do-parta.sh -t 600 -m -n 1000 | active-inactive.awk" $LOGPATH/$PRO_LOG
+# Uncomment for more data
+#./minions.sh b3195 \
+#    "do-parta.sh -t 600 -m -n 10000 | active-inactive.awk" $LOGPATH/$PRO_LOG
+# Pull out the inactive/active+inactive value:
+grep -h 'i/' $LOGPATH/$PRO_LOG* | awk '{print$2}' >| $LOGPATH/$PRO_LOG.log
+# Append summary:
+append_avg $LOGPATH/$PRO_LOG.log
 
 
 echo "Generating report..." ###################################################
@@ -51,16 +100,8 @@ pushd $LOGPATH
     $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
     $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
     
-    $CTX/plot-histogram.sh $INT_LOG.log $INT_LOG.tex
-
     latex report.tex
     latex report.tex
     dvips -o report.ps report.dvi
     ps2pdf report.ps
 popd
-
-# TODO: Complete the shell script to:
-#           - run the experiment & get data (should we do the average of multiple
-#            runs or something?)           
-# 			- run gnuplot (or replacement)
-# 			- display the resulting graph (?)
