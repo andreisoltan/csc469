@@ -106,10 +106,12 @@ pushd $LOGPATH
     $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
     $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
   
-	cp $CTX/perlbench-b3185* .
-	cp $CTX/bzip2-b3185* .
-	cp $CTX/lbm-b3185* .
-	cp $CTX/partb-plot.gle .
+	cp -a $CTX/perlbench-b3185* .
+	cp -a $CTX/bzip2-b3185* .
+	cp -a $CTX/lbm-b3185* .
+	cp -a $CTX/partb-plot.gle .
+	cp -a $CTX/partb-average-speedup.sh .
+	cp -a $CTX/partb-average-speedup-aslr.sh .
 
 	$CTX/partb-analyse.sh > partb.log
 

@@ -1,7 +1,7 @@
 # This assumes that run_benchmarks_B has already been run on the particular machines.
 
 
-echo -e "PROGRAM\tO2/O3\tO2/O3 w/ ASLR\tO2/O3 wo/ ASLR"
+echo -e "PROGRAM\tO2/O3\t\tO2/O3 w/ ASLR\tO2/O3 wo/ ASLR"
 
 
 v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
