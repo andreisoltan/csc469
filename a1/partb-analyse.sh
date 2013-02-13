@@ -119,10 +119,11 @@ v2=`./partb-average-speedup-aslr.sh \
 
 
 v3=`./partb-average-speedup-aslr.sh \
-		perlbench-b3185-12.log \
-		perlbench-b3185-13.log \
-		perlbench-b3185-14.log \
-		perlbench-b3185-15.log \
+		bzip2-b3185-01.log \
+		bzip2-b3185-02.log \
+		bzip2-b3185-03.log \
+		bzip2-b3185-04.log \
+		bzip2-b3185-05.log \
 		program 1`
 
 echo -e "bzip1\t$v1\t$v2\t$v3"
@@ -138,18 +139,20 @@ v1=`./partb-average-speedup.sh \
 
 
 v2=`./partb-average-speedup-aslr.sh \
-		perlbench-b3185-12.log \
-		perlbench-b3185-13.log \
-		perlbench-b3185-14.log \
-		perlbench-b3185-15.log \
+		bzip2-b3185-01.log \
+		bzip2-b3185-02.log \
+		bzip2-b3185-03.log \
+		bzip2-b3185-04.log \
+		bzip2-b3185-05.log \
 		byoudoin 0`
 
 
 v3=`./partb-average-speedup-aslr.sh \
-		perlbench-b3185-12.log \
-		perlbench-b3185-13.log \
-		perlbench-b3185-14.log \
-		perlbench-b3185-15.log \
+		bzip2-b3185-01.log \
+		bzip2-b3185-02.log \
+		bzip2-b3185-03.log \
+		bzip2-b3185-04.log \
+		bzip2-b3185-05.log \
 		byoudoin 1`
 
 echo -e "bzip2\t$v1\t$v2\t$v3"
@@ -164,17 +167,19 @@ v1=`./partb-average-speedup.sh \
 		combined`
 
 v2=`./partb-average-speedup-aslr.sh \
-		perlbench-b3185-12.log \
-		perlbench-b3185-13.log \
-		perlbench-b3185-14.log \
-		perlbench-b3185-15.log \
+		bzip2-b3185-01.log \
+		bzip2-b3185-02.log \
+		bzip2-b3185-03.log \
+		bzip2-b3185-04.log \
+		bzip2-b3185-05.log \
 		combined 0`
 
 v3=`./partb-average-speedup-aslr.sh \
-		perlbench-b3185-12.log \
-		perlbench-b3185-13.log \
-		perlbench-b3185-14.log \
-		perlbench-b3185-15.log \
+		bzip2-b3185-01.log \
+		bzip2-b3185-02.log \
+		bzip2-b3185-03.log \
+		bzip2-b3185-04.log \
+		bzip2-b3185-05.log \
 		combined 1`
 
-echo -e "bzip2\t$v1\t$v2\t$v3"
+echo -e "bzip3\t$v1\t$v2\t$v3"
