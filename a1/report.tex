@@ -305,23 +305,23 @@ Given a lab name, a job and the basename for its log files, minions.sh
 uses find-empty-wkstn.sh (see~\ref{tool:find-empty}) in order to launch jobs on
 all of the empty workstations in that lab.
 
-\subsection{run_benchmarks_B} \label{tool:run_benchmarks_B}
+\subsection{run\_benchmarks\_B} \label{tool:run\_benchmarks\_B}
 Runs the benchmarks for partb on multiple hosts. Uses \ref{tool:partb.sh}.
 
 \subsection{partb.sh} \label{tool:partb.sh}
-Given a set of tests to run (i.e. bzip2, lbm), runs \ref{tool:partb_run_tests.sh} 20 times on the given program, both with and without ASLR. This script also increases the environments size, staring from 1 byte, by 128 bytes, up to 2560 bytes.
+Given a set of tests to run (i.e. bzip2, lbm), runs \ref{tool:partb\_run\_tests.sh} 20 times on the given program, both with and without ASLR. This script also increases the environments size, staring from 1 byte, by 128 bytes, up to 2560 bytes.
 
-\subsection{partb_run_tests.sh} \label{tool:partb_run_tests.sh}
+\subsection{partb\_run\_tests.sh} \label{tool:partb\_run\_tests.sh}
 Run the tests on a given program, based on the given flag. Prints run times for each program, together with infomation about the level of optimisation, the size of the UNIX environment and information whether the ASLR is enabled or not.
 
 \subsection{partb-analyse.sh}
-Run analisys of the output of \ref{tool:run_benchmark_B}. This tool prints the average runtime improvment for each program, as a fraction of runtime with O2 divided by runtime of O3. The measurements are printed for enviroments with and without ASLR. For processing the output of \ref{tool:run_benchmark_B} this uses \ref{tool:partb-average-speedup.sh} and \label{tool:partb-average-speedup-aslr.sh}.
+Run analisys of the output of \ref{tool:run\_benchmark\_B}. This tool prints the average runtime improvment for each program, as a fraction of runtime with O2 divided by runtime of O3. The measurements are printed for enviroments with and without ASLR. For processing the output of \ref{tool:run\_benchmarks\_B} this uses \ref{tool:partb-average-speedup.sh} and \label{tool:partb-average-speedup-aslr.sh}.
 
 \subsection{partb-average-speedup.sh} \label{tool:partb-average-speedup.sh}
-Parses output of \ref{tool:run_benchmark_B} and returns the average speeup of O2 vs. O3 optiminations for the given program.
+Parses output of \ref{tool:run\_benchmarks\_B} and returns the average speeup of O2 vs. O3 optiminations for the given program.
 
 \subsection{partb-average-speedup-aslr.sh} \label{tool:partb-average-speedup-aslr.sh}
-Parses output of \ref{tool:run_benchmark_B} and returns the average speeup of O2 vs. O3 optiminations for the given program, while also taking into account the different evironments, whether ASLR was enabled or disabled.
+Parses output of \ref{tool:run\_benchmarks\_B} and returns the average speeup of O2 vs. O3 optiminations for the given program, while also taking into account the different evironments, whether ASLR was enabled or disabled.
 
 \begin{framed}
     \label{lst:minions}
