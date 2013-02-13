@@ -183,3 +183,29 @@ v3=`./partb-average-speedup-aslr.sh \
 		combined 1`
 
 echo -e "bzip3\t$v1\t$v2\t$v3"
+
+v1=`./partb-average-speedup.sh \
+		lbm-b3185-06.log \
+		lbm-b3185-07.log \
+		lbm-b3185-08.log \
+		lbm-b3185-09.log \
+		lbm-b3185-10.log \
+		.`
+
+v2=`./partb-average-speedup-aslr.sh \
+		lbm-b3185-06.log \
+		lbm-b3185-07.log \
+		lbm-b3185-08.log \
+		lbm-b3185-09.log \
+		lbm-b3185-10.log \
+		. 0`
+
+v3=`./partb-average-speedup-aslr.sh \
+		lbm-b3185-06.log \
+		lbm-b3185-07.log \
+		lbm-b3185-08.log \
+		lbm-b3185-09.log \
+		lbm-b3185-10.log \
+		. 1`
+
+echo -e "lbm\t$v1\t$v2\t$v3"

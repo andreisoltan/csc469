@@ -189,12 +189,29 @@ deal higher than the time we computed for the handling of a timer interrupt.
 \newpage
 \section{Part B: Measurement bias}
 \label{sec:B}
+
+In section we present our investigation of measurement bias. The line of inquiry is similar to the one presented the 2009 ASPOLS paper by Mytkowicz et al..
+
 (How significant is measurement bias due to Unix environment size on current systems?)
 (To what extent does Linux ASLR (address space layout randomization) affect measured performance? Does it mitigate or exacerbate the effect of Unix environment size?)
 (What underlying architectural events in the microprocessor appear to be causing the measurement bias?)
 \subsection{Methodology}
-(include hardware platform, cpu family, speed, cache, memory, disk params, anything relevant)
+The runtime environment were the machines in lab B23185. Detailed technical specifications about these machines can be found in the \ref{tool:platform} subsection.
+
+\\
+In order to measure the differences in performance for each program, they were compiled, with -O2 and -O3 flags, as provided by the given Makefiles. In order to automate the collection of data, and to make the runs as reliable as possible, we developed several bash scrips (e.g partb.sh) that would collect the data for each program individually. This also has the benefit of reducing side effects in the runtime due to cache misses, since the same program is run several times in a row. All programs were run 20 times, both with ASLR disabled and enabled.
+
+\\
+In order to collect sufficient data, and to achieve this in a realtively short amount of time, we done repeated runs on different machines. Each batch of 20 iterations of tests for a particular program was run on 5 machines in parallel. The difference between the machines is negligible for several reasons. First, the machines have identical hardware specifications and operating systems. Second, the benchmarks were run when no user was logged in to any of the machines being used. Lastly, the results are reported in terms of relative speedup. This allows for relatively accurate data, even in the unlikely event of varying performance on identical environments.
+
 \subsection{Results}
+
+\begin{framed}
+    \label{lst:inactive}
+    \lstinputlisting[lastline=15]{partb.log}
+\end{framed}
+
+
 (Insert tabular, graphical results, discussion)
 
 \newpage
@@ -261,7 +278,7 @@ Transforms output from parta (see~\ref{tool:parta}) inactivity or
 context-switching trials into gnuplot input.
 
 \subsection{active-inactive.awk} \label{tool:active-inactive}
-Given output from parts (see~\ref{tool:parta}) this computes the amount of time
+Given output	 from parts (see~\ref{tool:parta}) this computes the amount of time
 spent in the active and inactive states as well as the ratio of inactive to
 total time.
 
@@ -269,4 +286,24 @@ total time.
 Given a lab name, a job and the basename for its log files, minions.sh
 uses find-empty-wkstn.sh (see~\ref{tool:find-empty}) in order to launch jobs on
 all of the empty workstations in that lab.
+
+\subsection{run_benchmarks_B} \label{tool:run_benchmark_B}
+Runs the 
+
+\subsection{partb.sh}
+Given a set of tests to run (i.e. bzip2, lbm), runs \ref{tool:partb_run_tests.sh} 20 times on the given program, both with and without ASLR. This script also increases the environments size, staring from 1 byte, by 128 bytes, up to 2560 bytes.
+
+\subsection{partb_run_tests.sh} \label{tool:partb_run_tests.sh}
+Run the tests on a given program, based on the given flag. Prints run times for each program, together with infomation about the level of optimisation, the size of the UNIX environment and information whether the ASLR is enabled or not.
+
+\subsection{partb-analyse.sh}
+Run analisys of the output of \ref{tool:run_benchmark_B}. This tool prints the average runtime improvment for each program, as a fraction of runtime with O2 divided by runtime of O3. The measurements are printed for enviroments with and without ASLR. For processing the output of \ref{tool:run_benchmark_B} this uses \ref{tool:partb-average-speedup.sh} and \label{tool:partb-average-speedup-aslr.sh}.
+
+\subsection{partb-average-speedup.sh} \label{tool:partb-average-speedup.sh}
+Parses output of \ref{tool:run_benchmark_B} and returns the average speeup of O2 vs. O3 optiminations for the given program.
+
+\subsection{partb-average-speedup-aslr.sh} \label{tool:partb-average-speedup-aslr.sh}
+Parses output of \ref{tool:run_benchmark_B} and returns the average speeup of O2 vs. O3 optiminations for the given program, while also taking into account the different evironments, whether ASLR was enabled or disabled.
+
+
 \end{document}
