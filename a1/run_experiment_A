@@ -114,7 +114,8 @@ pushd $LOGPATH
 	$CTX/partb-analyse.sh > partb.log
 
 	$CTX/partb-plot.sh
-
+	
+	gle partb-plot.gle
 
     latex report.tex
     latex report.tex
