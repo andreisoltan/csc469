@@ -305,10 +305,10 @@ Given a lab name, a job and the basename for its log files, minions.sh
 uses find-empty-wkstn.sh (see~\ref{tool:find-empty}) in order to launch jobs on
 all of the empty workstations in that lab.
 
-\subsection{run_benchmarks_B} \label{tool:run_benchmark_B}
-Runs the 
+\subsection{run_benchmarks_B} \label{tool:run_benchmarks_B}
+Runs the benchmarks for partb on multiple hosts. Uses \ref{tool:partb.sh}.
 
-\subsection{partb.sh}
+\subsection{partb.sh} \label{tool:partb.sh}
 Given a set of tests to run (i.e. bzip2, lbm), runs \ref{tool:partb_run_tests.sh} 20 times on the given program, both with and without ASLR. This script also increases the environments size, staring from 1 byte, by 128 bytes, up to 2560 bytes.
 
 \subsection{partb_run_tests.sh} \label{tool:partb_run_tests.sh}
