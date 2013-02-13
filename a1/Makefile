@@ -31,8 +31,8 @@ a1.tgz: run
 	  README Makefile \
 	  active-inactive.awk minions.sh usages.sh\
 	  count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh \
-	  part-analyse.sh partb-average-speedup.sh partb-average-speedup-aslr.sh \
-	  plartb-plot.gle partb-plot.sh partb.sh partb_run_tests.sh\
+	  partb-analyse.sh partb-average-speedup.sh partb-average-speedup-aslr.sh \
+	  partb-plot.gle partb-plot.sh partb.sh partb_run_tests.sh\
 	  run_benchmarks_B \
 	  tsc.c tsc.h \
 	  parta.c \
