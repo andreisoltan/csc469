@@ -201,7 +201,7 @@ In order to collect sufficient data, and to achieve this in a realtively short a
 
 \subsection{Results}
 
-Having plotted the relative speedup with O2 vs. O3, in increasing environment sizes with ASLR enabled, we have found that the increasing environment size has a tendency to push the speedup to a higher ratio, when compared with run with smaller environment sizes. However, this tendency is visibly small, with an estimated 2% positive impact of performance.
+Having plotted the relative speedup with O2 vs. O3, in increasing environment sizes with ASLR enabled, we have found that the increasing environment size has a tendency to push the speedup to a higher ratio, when compared with run with smaller environment sizes. However, this tendency is visibly small, with an estimated 2\% positive impact of performance.
 
 \begin{figure}[!b]
   \begin{center}
@@ -210,7 +210,7 @@ Having plotted the relative speedup with O2 vs. O3, in increasing environment si
   \caption{Plot of perlbench time(O2)/time(O3) with varying environment sizes}
 \end{figure}
 
-When analysing the impact of ASLR on performance, we have found that programs running with ASLR enabled benefit from a slightly larger speedup than the ones running with ASLR disables. This improvement is on the order of a few percent, rarely reaching 10%. As such, we believe the absence of ASLR does not have a hindering impact on performance. We have observed that in some cases disabling the ASLR had a detrimental impact on the speedup, sometimes decrementing it by 5%-17%. Since, in our measurements, this is the case just for variations of bzip2, we believe this to be due to the specific of the program, and not the absence of ASLR.
+When analysing the impact of ASLR on performance, we have found that programs running with ASLR enabled benefit from a slightly larger speedup than the ones running with ASLR disables. This improvement is on the order of a few percent, rarely reaching 10\%. As such, we believe the absence of ASLR does not have a hindering impact on performance. We have observed that in some cases disabling the ASLR had a detrimental impact on the speedup, sometimes decrementing it by 5\%-17\%. Since, in our measurements, this is the case just for variations of bzip2, we believe this to be due to the specific of the program, and not the absence of ASLR.
 
 \begin{framed}
     \label{lst:inactive}
