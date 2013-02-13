@@ -1,0 +1,9 @@
+size 10 10
+begin graph
+    data "partb-plot.dat"
+	d1 marker fcircle color blue
+	title  "Environment size impact"
+	ytitle "speedup(O2)/speedup(O3)"
+	xtitle "Environment size"
+end graph
+
