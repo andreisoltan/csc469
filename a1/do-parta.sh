@@ -18,7 +18,7 @@ get_freq() {
 USAGE="
     USAGE:
 
-        $0 [-m] [-c | -i | -t <thresh>] [-n <num>] [-p <processor>]
+        $0 [-h] [-m] [-c | -i | -t <thresh>] [-n <num>] [-p <processor>]
 
     Handy script for running parta, our data collector for Part A of
     Assignment 1 for CSC469. Mostly passes arguments through, also binds
@@ -27,6 +27,7 @@ USAGE="
 
     OPTIONS:
 
+        -h  prints help message
         -m  report time in milliseconds, default to false (report in cycles)
         -c  context switching, passed to parta, defaults to false
         -i  interval mode, passed to parta, defaults to false, overrides -t, -c
@@ -39,7 +40,7 @@ USAGE="
 
 ### Process args...
 
-while getopts "icmt:n:p:" opt; do
+while getopts "hicmt:n:p:" opt; do
     case $opt in
         i)
             FLAG_I=1;
@@ -59,6 +60,10 @@ while getopts "icmt:n:p:" opt; do
             ;;
         p)
             CPU=$OPTARG;
+            ;;
+        h)  
+            echo "$USAGE";
+            exit;
             ;;
         \?)
             echo "$USAGE" >&2;
