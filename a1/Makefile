@@ -29,7 +29,7 @@ a1.tgz: run
 	ln -fs log/parta.latest/report.pdf
 	tar -hczvf $@ \
 	  README Makefile \
-	  active-inactive.awk minions.sh \
+	  active-inactive.awk minions.sh usages.sh\
 	  count-users.sh find-empty-wkstn.sh gather-platform-info.sh platform-info.sh \
 	  tsc.c tsc.h \
 	  parta.c \
