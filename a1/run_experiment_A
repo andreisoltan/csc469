@@ -103,7 +103,17 @@ pushd $LOGPATH
 
     $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
     $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
-    
+  
+	cp $CTX/perlbench-b3185* .
+	cp $CTX/bzip2-b3185* .
+	cp $CTX/lbm-b3185* .
+	cp $CTX/partb-plot.gle .
+
+	$CTX/partb-analyse.sh > partb.log
+
+	$CTX/partb-plot.sh
+
+
     latex report.tex
     latex report.tex
     dvips -o report.ps report.dvi

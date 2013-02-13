@@ -1,3 +1,5 @@
+# This assumes that run_benchmarks_B has already been run on the particular machines.
+
 
 echo -e "PROGRAM\tO2/O3\tO2/O3 w/ ASLR\tO2/O3 wo/ ASLR"
 

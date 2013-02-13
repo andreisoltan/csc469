@@ -1,3 +1,5 @@
+# This assumes that run_benchmarks_B has already been run on the particular machines.
+
 
 echo -e "PROGRAM\tO2/O3\tO2/O3 w/ ASLR\tO2/O3 wo/ ASLR"
 
@@ -208,4 +210,4 @@ v3=`./partb-average-speedup-aslr.sh \
 		lbm-b3185-10.log \
 		. 1`
 
-echo -e "bzip3\t$v1\t$v2\t$v3"
+echo -e "lbm\t$v1\t$v2\t$v3"

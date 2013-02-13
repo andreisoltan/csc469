@@ -190,11 +190,8 @@ deal higher than the time we computed for the handling of a timer interrupt.
 \section{Part B: Measurement bias}
 \label{sec:B}
 
-In section we present our investigation of measurement bias. The line of inquiry is similar to the one presented the 2009 ASPOLS paper by Mytkowicz et al..
+In section we present our investigation of measurement bias. The line of inquiry is similar to the one presented the 2009 ASPOLS paper by Mytkowicz et al.
 
-(How significant is measurement bias due to Unix environment size on current systems?)
-(To what extent does Linux ASLR (address space layout randomization) affect measured performance? Does it mitigate or exacerbate the effect of Unix environment size?)
-(What underlying architectural events in the microprocessor appear to be causing the measurement bias?)
 \subsection{Methodology}
 The runtime environment were the machines in lab B23185. Detailed technical specifications about these machines can be found in the \ref{tool:platform} subsection.
 
@@ -202,17 +199,29 @@ The runtime environment were the machines in lab B23185. Detailed technical spec
 In order to measure the differences in performance for each program, they were compiled, with -O2 and -O3 flags, as provided by the given Makefiles. In order to automate the collection of data, and to make the runs as reliable as possible, we developed several bash scrips (e.g partb.sh) that would collect the data for each program individually. This also has the benefit of reducing side effects in the runtime due to cache misses, since the same program is run several times in a row. All programs were run 20 times, both with ASLR disabled and enabled.
 
 \\
-In order to collect sufficient data, and to achieve this in a realtively short amount of time, we done repeated runs on different machines. Each batch of 20 iterations of tests for a particular program was run on 5 machines in parallel. The difference between the machines is negligible for several reasons. First, the machines have identical hardware specifications and operating systems. Second, the benchmarks were run when no user was logged in to any of the machines being used. Lastly, the results are reported in terms of relative speedup. This allows for relatively accurate data, even in the unlikely event of varying performance on identical environments.
+In order to collect sufficient data, and to achieve this in a realtively short amount of time, we done repeated runs on different machines. Each batch of 20 iterations of tests for a particular program was run on 5 machines in parallel. This gives us a rough estimate of 100 samples per program in a single ASLR setting. The difference between the machines is negligible for several reasons. First, the machines have identical hardware specifications and operating systems. Second, the benchmarks were run when no user was logged in to any of the machines being used. Lastly, the results are reported in terms of relative speedup. This allows for relatively accurate data, even in the unlikely event of varying performance on identical environments.
 
 \subsection{Results}
 
+Having plotted the relative speedup with O2 vs. O3, in increasing environment sizes with ASLR enabled, we have found that the increasing environment size has a tendency to push the speedup to a higher ratio, when compared with run with smaller environment sizes. However, this tendency is visibly small, with an estimated 2% positive impact of performance.
+
+\begin{figure}[h]
+    \caption{Plot of perlbench time(O2)/time(O3) with varying environment sizes}
+    \input{partb-plot}
+\end{figure}
+
+
+\\
+
+When analysing the impact of ASLR on performance, we have found that programs running with ASLR enabled benefit from a slightly larger speedup than the ones running with ASLR disables. This improvement is on the order of a few percent, rarely reaching 10%. As such, we believe the absence of ASLR does not have a hindering impact on performance. We have observed that in some cases disabling the ASLR had a detrimental impact on the speedup, sometimes decrementing it by 5%-17%. Since, in our measurements, this is the case just for variations of bzip2, we believe this to be due to the specific of the program, and not the absence of ASLR.
+\\
 \begin{framed}
     \label{lst:inactive}
     \lstinputlisting[lastline=15]{partb.log}
 \end{framed}
 
-
-(Insert tabular, graphical results, discussion)
+\\
+Future work would include a more careful analysis of the anomalies, making use of statistical tools as well as a larger sample of observations. It would also be important to do more finegrained comparisons between programs based on their inputs and specifications.
 
 \newpage
 \appendix
