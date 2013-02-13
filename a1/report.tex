@@ -213,11 +213,19 @@ This report is generated after the experiments have completed.
 \subsection{parta} \label{tool:parta}
 Main information gathering tool used in section~\ref{sec:A}. Collects samples
 from the TSC register using the provided tsc.c and tsc.h code.
+\begin{framed}
+    \label{lst:parta}
+    \lstinputlisting{parta.usage}
+\end{framed}
 
 \subsection{do-parta.sh} \label{tool:do-parta}
 Wrapper for parta (see appendix~\ref{tool:parta}). Main value added is the
 ability to select which CPU it will run on, and to extract and pass in the
 current CPU clock frequency.
+\begin{framed}
+    \label{lst:do-parta}
+    \lstinputlisting{do-parta.sh.usage}
+\end{framed}
 
 \subsection{count-users.sh} \label{tool:count-users.sh}
 Used to implement find-empty-wkstn.sh (see appendix~\ref{tool:find-empty}).
@@ -230,6 +238,10 @@ revealed the number of machines in each lab and this script simply loops over
 the machines in a specified lab, checking them with \lstinline{count-users.sh}.
 
 For politeness it does a bit of waiting between subsequent checks.
+\begin{framed}
+    \label{lst:find-empty}
+    \lstinputlisting{find-empty-wkstn.sh.usage}
+\end{framed}
 
 \subsection{platform-info.sh, gather-platform-info.sh} \label{tool:platform}
 Used to get a sense of the hardware available in each of the CDF labs. Of
@@ -269,4 +281,20 @@ total time.
 Given a lab name, a job and the basename for its log files, minions.sh
 uses find-empty-wkstn.sh (see~\ref{tool:find-empty}) in order to launch jobs on
 all of the empty workstations in that lab.
+\begin{framed}
+    \label{lst:minions}
+    \lstinputlisting{minions.sh.usage}
+\end{framed}
+
+\subsection{usages.sh} \label{tool:usages}
+Prints the usage messages of these scripts for inclusion in this report.
+\begin{framed}
+    \label{lst:usages}
+    \lstinputlisting{usages.sh.usage}
+\end{framed}
+
+
+\subsection{awk, grep, sed}
+So great!
+
 \end{document}

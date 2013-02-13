@@ -9,10 +9,19 @@ if [[ ! -e $COUNTUSERS ]]; then
 fi
 
 USAGE="
-    Usage: $0 [b2200|b2210|b2220|b2240|b3175|b3185|b3195|b3200|s2360]
+    USAGE:
+        $0 --help | <labname>
   
     You must provide at least one laboratory name. If you
-    specify more than one, only the first will be used.";
+    specify more than one, only the first will be used.
+
+    --help
+        prints this message
+    
+    <labname>
+        One of: b2200, b2210, b2220, b2240, b3175, b3185,
+        b3195, b3200, s2360
+    ";
 
 # Number of machines to check in parallel
 BANDWIDTH=5;
@@ -64,6 +73,10 @@ case $1 in
     b3195) MAX=18; ;;
     b3200) MAX=14; ;;
     s2360) MAX=15; ;;
+    --help)
+        echo "$USAGE"; 
+        exit;
+        ;;
     *)
         echo "Unrecognized lab name: '$1'" >&2
         echo "$USAGE" >&2 

@@ -87,6 +87,8 @@ grep -h 'i/' $LOGPATH/$PRO_LOG* | awk '{print$2}' >| $LOGPATH/$PRO_LOG.log
 # Append summary:
 append_avg $LOGPATH/$PRO_LOG.log
 
+# Make usage messages for inclusion in report
+$CTX/usages.sh $LOGPATH
 
 echo "Generating report..." ###################################################
 pushd $LOGPATH
@@ -103,6 +105,7 @@ pushd $LOGPATH
 
     $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
     $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
+
     
     latex report.tex
     latex report.tex
