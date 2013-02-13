@@ -1,7 +1,7 @@
 
 echo -e "PROGRAM\tO2/O3\tO2/O3 w/ ASLR\tO2/O3 wo/ ASLR"
 
-echo -e "perl1\t\c"
+
 v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
@@ -9,181 +9,172 @@ v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
 		perlbench-b3185-15.log \
 		diffmail`
 
-echo -e "\t"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+
+v2=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		diffmail 0
+		diffmail 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+
+v3=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		diffmail 1
+		diffmail 1`
 
-echo -e "\n"
+echo -e "perl1\t$v1\t$v2\t$v3"
 
-echo -e "perl2\t\c"
-./partb-average-speedup.sh perlbench-b3185-11.log \
+v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		splitmail
+		splitmail`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+
+v2=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		splitmail 0
+		splitmail 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+
+v3=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		splitmail 1
+		splitmail 1`
 
-echo -e "\n"
+echo -e "perl2\t$v1\t$v2\t$v3"
 
-echo -e "perl3\t\c"
-./partb-average-speedup.sh perlbench-b3185-11.log \
+
+v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		perfect
+		perfect`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+v2=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		perfect 0
+		perfect 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+v3=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		perfect 1
-echo -e "\n"
+		perfect 1`
+
+echo -e "perl3\t$v1\t$v2\t$v3"
 
 
-echo -e "perl4\t\c"
-./partb-average-speedup.sh perlbench-b3185-11.log \
+v1=`./partb-average-speedup.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		scrabbl
+		scrabbl`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+v2=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		scrabbl 0
+		scrabbl 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
+v3=`./partb-average-speedup-aslr.sh perlbench-b3185-11.log \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		scrabbl 1
-echo -e "\n"
+		scrabbl 1`
+
+echo -e "perl4\t$v1\t$v2\t$v3"
 
 
-echo -e "bzip1\t\c"
-./partb-average-speedup.sh \
+v1=`./partb-average-speedup.sh \
 		bzip2-b3185-01.log \
 		bzip2-b3185-02.log \
 		bzip2-b3185-03.log \
 		bzip2-b3185-04.log \
 		bzip2-b3185-05.log \
-		program
+		program`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+v2=`./partb-average-speedup-aslr.sh \
 		bzip2-b3185-01.log \
 		bzip2-b3185-02.log \
 		bzip2-b3185-03.log \
 		bzip2-b3185-04.log \
 		bzip2-b3185-05.log \
-		program 0
+		program 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+
+v3=`./partb-average-speedup-aslr.sh \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		program 1
-echo -e "\n"
+		program 1`
+
+echo -e "bzip1\t$v1\t$v2\t$v3"
 
 
-echo -e "bzip2\t\c"
-./partb-average-speedup.sh \
+v1=`./partb-average-speedup.sh \
 		bzip2-b3185-01.log \
 		bzip2-b3185-02.log \
 		bzip2-b3185-03.log \
 		bzip2-b3185-04.log \
 		bzip2-b3185-05.log \
-		byoudoin
+		byoudoin`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+
+v2=`./partb-average-speedup-aslr.sh \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		byoudoin 0
+		byoudoin 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+
+v3=`./partb-average-speedup-aslr.sh \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		byoudoin 1
-echo -e "\n"
+		byoudoin 1`
+
+echo -e "bzip2\t$v1\t$v2\t$v3"
 
 
-echo -e "bzip3\t\c"
-./partb-average-speedup.sh \
+v1=`./partb-average-speedup.sh \
 		bzip2-b3185-01.log \
 		bzip2-b3185-02.log \
 		bzip2-b3185-03.log \
 		bzip2-b3185-04.log \
 		bzip2-b3185-05.log \
-		combined
+		combined`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+v2=`./partb-average-speedup-aslr.sh \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		combined 0
+		combined 0`
 
-echo -e "\t\c"
-./partb-average-speedup-aslr.sh \
+v3=`./partb-average-speedup-aslr.sh \
 		perlbench-b3185-12.log \
 		perlbench-b3185-13.log \
 		perlbench-b3185-14.log \
 		perlbench-b3185-15.log \
-		combined 1
-echo -e "\n"
+		combined 1`
 
-
+echo -e "bzip2\t$v1\t$v2\t$v3"
