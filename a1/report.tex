@@ -205,9 +205,11 @@ In order to collect sufficient data, and to achieve this in a realtively short a
 
 Having plotted the relative speedup with O2 vs. O3, in increasing environment sizes with ASLR enabled, we have found that the increasing environment size has a tendency to push the speedup to a higher ratio, when compared with run with smaller environment sizes. However, this tendency is visibly small, with an estimated 2% positive impact of performance.
 
-\begin{figure}[h]
-    \caption{Plot of perlbench time(O2)/time(O3) with varying environment sizes}
-    \input{partb-plot}
+\begin{figure}[!b]
+  \begin{center}
+    \includegraphics{partb-plot.eps}
+  \end{center}
+  \caption{Plot of perlbench time(O2)/time(O3) with varying environment sizes}
 \end{figure}
 
 
