@@ -78,10 +78,10 @@ PRO_LOG=proportion
 # Collect data:
 # Maybe bump the n value back up for the final run
 ./minions.sh b3175 \
-    "do-parta.sh -t 600 -m -n 1000 | active-inactive.awk" $LOGPATH/$PRO_LOG
+    "do-parta.sh -t 600 -m -n 10000 | active-inactive.awk" $LOGPATH/$PRO_LOG
 # Uncomment for more data
-#./minions.sh b3195 \
-#    "do-parta.sh -t 600 -m -n 10000 | active-inactive.awk" $LOGPATH/$PRO_LOG
+./minions.sh b3195 \
+    "do-parta.sh -t 600 -m -n 10000 | active-inactive.awk" $LOGPATH/$PRO_LOG
 # Pull out the inactive/active+inactive value:
 grep -h 'i/' $LOGPATH/$PRO_LOG* | awk '{print$2}' >| $LOGPATH/$PRO_LOG.log
 # Append summary:

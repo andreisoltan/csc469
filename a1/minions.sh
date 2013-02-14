@@ -16,5 +16,5 @@ fi
 SUFFIX=`date +%s`.log
 
 for wkstn in `find-empty-wkstn.sh $1`; do
-    ssh $wkstn "hostname; cd $CTX && $2 >| $3-$wkstn-$SUFFIX" &
+    ssh $wkstn "hostname; cd $CTX && $2 >| $3-$wkstn-$SUFFIX" 
 done
