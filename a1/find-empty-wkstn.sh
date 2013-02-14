@@ -1,7 +1,9 @@
 #!/bin/bash
 # Prints out unoccupied workstations in the specified lab
 
-COUNTUSERS=`which count-users.sh`;
+CTX=`pwd`
+COUNTUSERS="$CTX/count-users.sh";
+#COUNTUSERS=`which count-users.sh`;
 
 if [[ ! -e $COUNTUSERS ]]; then
     echo "count-users.sh not found" >&2

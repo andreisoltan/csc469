@@ -101,10 +101,10 @@ pushd $LOGPATH
         report.tex;
 
     $CTX/plot-parta.awk  $INACT_LOG-ms.log    | gnuplot
-    $CTX/plot-parta.awk  $INACT_LOG-cycle.log | gnuplot
+#    $CTX/plot-parta.awk  $INACT_LOG-cycle.log | gnuplot
 
     $CTX/plot-parta.awk  $CONS_LOG-ms.log      | gnuplot
-    $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
+#    $CTX/plot-parta.awk  $CONS_LOG-cycle.log   | gnuplot
   
 	cp -a $CTX/perlbench-b3185* .
 	cp -a $CTX/bzip2-b3185* .
