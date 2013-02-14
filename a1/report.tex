@@ -5,11 +5,12 @@
 \usepackage{framed}
 \usepackage{multicol}
 \usepackage{hyperref}
+\usepackage{float}
 
 \author{Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu
 \and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
 \title{CSC469: Assignment 1}
-\date{12 February, 2013}
+\date{13 February, 2013}
 
 % Show paragraphs in table of contents
 \setcounter{tocdepth}{5}
@@ -194,7 +195,7 @@ deal higher than the time we computed for the handling of a timer interrupt.
 In this section we present our investigation of measurement bias. The line of inquiry is similar to the one presented the 2009 ASPOLS paper by Mytkowicz et al.
 
 \subsection{Methodology}
-The runtime environment are the machines in lab B23185. Detailed technical specifications about these machines can be found in the table in the \ref{tool:platform} subsection.
+The runtime environment are the machines in lab BA3185. Detailed technical specifications about these machines can be found in the table in the \ref{tool:platform} subsection.
 
 In order to measure the differences in performance for each program, they were compiled, with -O2 and -O3 flags, as provided by the given Makefiles. In order to automate the collection of data, and to make the runs as reliable as possible, we developed several bash scrips (e.g partb.sh) that would collect the data for each program individually. This also has the benefit of reducing side effects in the runtime due to cache misses, since the same program is run several times in a row. All programs were run 20 times, both with ASLR disabled and enabled. This allowed us to collect data to make the necessary comparisons between different configurations.
 
@@ -202,17 +203,19 @@ In order to collect sufficient data, and to achieve this in a relatively short a
 
 In order to replicate the results presented by Mytkowicz et al., we used the same method for increasing the size of the environment. At the beginning of every script, the environment is cleaned of any variables. This allows to reduce interference from outside sources. In addition, it allows us to have a well-controlled and reporduceable experiment, regardless of the environment.
 
-The size of the environment starts at the same threshold for every batch run. It is increased by 128 bytes at every iteration, to a total of 2560 bytes (20 iterations). At each iteration, a program is run with ASLR, with optimizations 02 then 03, and without ASLR. Thus, every iteration contains 4 runs of the program.
+The size of the environment starts at the same threshold for every batch run. It is increased by 128 bytes at every iteration, to a total of 2560 bytes (20 iterations). At each iteration, a program is run with ASLR, with optimizations O2 then O3, and without ASLR. Thus, every iteration contains 4 runs of the program.
 
 It is important to note, that we found it impossible to completely eliminate all variables for the environment. Even after running `env - bash`, there are still variables required for normal function. We found that the minimum size of the environment that we could achieve was approximately 200-300 bytes. This initial size is constant among runs. In addition, we believe it to be insignificant, considering that it is an order of magnitude less than the maximum size we reach by the end of the 20 iterations.
 
-
+\newpage
 \subsection{Results}
 
 Having plotted the relative speedup with O2 vs. O3 (see graph below), in increasing environment sizes with ASLR enabled, we have found that the increasing environment size has a tendency to push the speedup to a higher ratio, when compared with run with smaller environment sizes. However, this tendency is visibly small, with an estimated 2\% positive impact of performance.
 
-\begin{figure}[h]
-	\input{partb-plot}
+\begin{figure}[H]
+	\begin{center}
+		\input{partb-plot}
+	\end{center}
 	\caption{Plot of perlbench time(O2)/time(O3) with varying environment sizes}
 \end{figure}
 
