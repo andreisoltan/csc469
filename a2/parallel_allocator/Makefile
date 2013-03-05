@@ -1,5 +1,8 @@
 
 all:
+	./build.sh
+
+program:
 	cd util; make
 	cd allocators; make
 	cd benchmarks/cache-scratch; make
