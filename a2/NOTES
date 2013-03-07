@@ -1,0 +1,62 @@
+# Reading: ####################################################################
+-  Google's thread-safe malloc
+   http://goog-perftools.sourceforge.net/doc/tcmalloc.html
+-  Doug Lea's malloc
+   http://g.oswego.edu/dl/html/malloc.html
+-  A Comparison of Memory Allocators in Multiprocessors
+   http://dsc.sun.com/solaris/articles/multiproc/multiproc.html
+-  Miser - A Dynamically Loadable Memory Allocator for Multi-Threaded Applications
+   http://software.intel.com/en-us/articles/miser-a-dynamically-loadable-memory-allocator-for-multi-threaded-applications
+
+# Design notes: ###############################################################
+? programmatically find page size or assume 4k?
+  - can use mem_pagesize()
+- Miser paper suggests redirecting requests over 256 bytes to system malloc
+  implementation (most workloads do not have many of that size)
+
+### kheap ###########################################################
+- assumes 4k pages
+- uses preprocessor defines SLOW and SLOWER to conditionally
+compile consistency checks.
+- groups allocations into size groups of powers of two:
+  8, 16, 32, 64, 128, 256, 512, 1024, 2048
+- structures
+  - freelist
+  - pageref
+  - big_freelist
+- guards mutiple calls to mm_init (checking for NULL == dseg_{lo,hi})
+- one mutex for malloc/free.
+- mm_malloc: locks, if size if more than largest subpage allocation (2048)
+  does big_kmalloc, otherwise subpage_kmalloc, unlocks.
+- big_kmalloc: rounds size up to page-boundary, walks through big_freelist
+  selecting the first chunk that is at least as big as requested (if larger
+  split it, if correct size use it). If none found, use mem_sbrk to get
+  more space.
+- subpage_kmalloc: figure out which size class. Look through the size class'
+  list of pagerefs for one with nfree > 0. If found, * returns the first
+  address from the free list, decrements free count, amends list. If not
+  found, uses allocpageref to get a new page, builds a free list appropriate
+  for the chunk size, gotos up to *.
+- mm_free: locks, does subpage_kfree, if fails does big_kfree, unlocks.
+- does not try to coalesce big chunks
+- housekeeping:
+  - when allocpageref gets a new page for subpage_kmalloc, it uses
+  sizeof(pageref) bytes at the beginning to store the pageref struct
+  - when big_kmalloc get a new chunk with mem_sbrk, it uses the first 8 bytes
+  (SMALLEST_SUBPAGE_SIZE) to store the size of the chunk (number of pages)
+
+### Hoard ###########################################################
+- one global heap plus one per processor
+- superblocks (some multiple of pagesize) are allocated to the per-
+  processor heaps as needed. Each superblock contains chunks of a fixed
+  size class. Size classes used are powers of 1.2. 
+- objects larger than 1/2 superblock are mmap'ed directly -- we lose
+  points if we do that.
+- when the per-processor heaps cross an emptiness threshold, a 
+  superblock is transferred from that heap to the global heap (they are
+  usually empty at this point) -- uses "fullness groups" in order to
+  find an empty(ish) superblock in constant time.
+- to allocate, we check the processor's local heap for empty space if
+  none found, check the global head. If none found, then a superblock
+  is allocatedd to that thread's heap.
+- seems to be locking on the individual heaps and the superblocks
