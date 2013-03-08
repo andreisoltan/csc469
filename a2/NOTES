@@ -1,3 +1,6 @@
+A compile / full test run took ~49 minutes on an empty b2200 workstation for
+the three supplied allocators
+
 # Reading: ####################################################################
 -  Google's thread-safe malloc
    http://goog-perftools.sourceforge.net/doc/tcmalloc.html
@@ -60,3 +63,25 @@ compile consistency checks.
   none found, check the global head. If none found, then a superblock
   is allocatedd to that thread's heap.
 - seems to be locking on the individual heaps and the superblocks
+
+### CMU #############################################################
+- mm_init calls mem_init and sbrks one page of memory. In the heap
+  it sets up the following structure:
+
+        dseg_lo                      dseg_hi
+        |                            |
+        v                            v
+        | 1  | 2      | 3  ~ 4  | 5  |
+
+        1: (4B) Pointer to head of freelist
+        2: (8B) Prolog
+        3: (4K - 16B) Free block, free list node is
+            stored in first bytes of the block.
+        4: (4B) Free block footer
+        5: (4B) Epilog
+
+- mm_malloc scans through the free list and takes the first block
+  that is large enough. Splits it if it is larger updating the freelist
+  if necessary (possibly including the head of the list at dseg_lo.)
+- not been through mm_free
+

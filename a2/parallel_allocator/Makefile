@@ -1,4 +1,7 @@
-export TOPDIR = $(CURDIR)
+export TOPDIR:=$(CURDIR)
+
+RESULTDIR:=$(TOPDIR)/benchmarks/results-$(shell date +%F--%X)
+LINKNAME:=$(TOPDIR)/benchmarks/results.latest
 
 program:
 	cd util && make
@@ -8,6 +11,16 @@ program:
 	cd benchmarks/threadtest && make
 	cd benchmarks/larson && make
 
+tests: program
+	rm -f $(LINKNAME)
+	mkdir -p $(RESULTDIR)
+	./benchmarks/runall.pl $(TOPDIR)/benchmarks
+	ln -s $(RESULTDIR) $(LINKNAME)
+	mv benchmarks/cache-scratch/Results $(RESULTDIR)/cache-scratch
+	mv benchmarks/cache-thrash/Results $(RESULTDIR)/cache-thrash
+	mv benchmarks/threadtest/Results $(RESULTDIR)/threadtest
+	mv benchmarks/larson/Results $(RESULTDIR)/larson
+
 clean:
 	cd util && make clean
 	cd allocators && make clean
@@ -15,4 +28,3 @@ clean:
 	cd benchmarks/cache-thrash && make clean
 	cd benchmarks/threadtest && make clean
 	cd benchmarks/larson && make clean
-
