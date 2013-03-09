@@ -1,14 +1,16 @@
-Discuss designs
-
-Start hacking on a/malloc.c
-
-Examine cmu_malloc?
+a/malloc.c:
+- large allocations
+- mm_free
+- accounting of usage/allocated
+- releasing superblocks to global heap
+- locking on superblocks?
 
 Design doc
 - skeleton latex?
 - learn to do bibliography
 
 Makefile
+- build a/malloc
 - add doc building to makefile
 - add submission tarballing to Makefile?
 - add build instructions for allocators/a

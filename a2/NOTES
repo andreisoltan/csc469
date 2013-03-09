@@ -2,20 +2,31 @@ A compile / full test run took ~49 minutes on an empty b2200 workstation for
 the three supplied allocators
 
 # Reading: ####################################################################
--  Google's thread-safe malloc
+-  Google's thread-safe malloc (jon: not read yet)
    http://goog-perftools.sourceforge.net/doc/tcmalloc.html
 -  Doug Lea's malloc
    http://g.oswego.edu/dl/html/malloc.html
--  A Comparison of Memory Allocators in Multiprocessors
+-  A Comparison of Memory Allocators in Multiprocessors (jon: not read yet)
    http://dsc.sun.com/solaris/articles/multiproc/multiproc.html
 -  Miser - A Dynamically Loadable Memory Allocator for Multi-Threaded Applications
    http://software.intel.com/en-us/articles/miser-a-dynamically-loadable-memory-allocator-for-multi-threaded-applications
+-  Palloc: parallel dynamic memory allocation (jon: not read yet)
+   https://www.ideals.illinois.edu/handle/2142/24135
 
 # Design notes: ###############################################################
 ? programmatically find page size or assume 4k?
   - can use mem_pagesize()
 - Miser paper suggests redirecting requests over 256 bytes to system malloc
-  implementation (most workloads do not have many of that size)
+  implementation (most workloads do not have many of that size) not sure if
+  we are allowed to do that or not. Will email Angela.
+- Palloc1 choses not to store metadata inside allocated pages because they
+  believe allocations of exactly one page are an important use case. They
+  use an internal malloc to allocate small chunks of space for metadata.
+- Locking: each cpu's heap (and global) has a lock. A cpu lock must be held
+  before obtaining the global heap's lock. Holders of the global heap's lock
+  may not obtain any further locks.
+- mem_sbrk calls must be serialized. This we can guarantee if we only call
+  mem_sbrk while holding the global heap lock.
 
 ### kheap ###########################################################
 - assumes 4k pages
@@ -58,11 +69,22 @@ compile consistency checks.
 - when the per-processor heaps cross an emptiness threshold, a 
   superblock is transferred from that heap to the global heap (they are
   usually empty at this point) -- uses "fullness groups" in order to
-  find an empty(ish) superblock in constant time.
-- to allocate, we check the processor's local heap for empty space if
-  none found, check the global head. If none found, then a superblock
-  is allocatedd to that thread's heap.
-- seems to be locking on the individual heaps and the superblocks
+  find an empty(ish) superblock in constant time:
+
+    "Each [fullness group] contains a doubly-linked list of
+    superblocks that are in a given fullness range (e.g., all
+    superblocks that are between 3/4 and completely empty are
+    in the same bin)."
+    
+- "Hoard ... always allocates from nearly-full superblocks... Whenever
+  we free a block ... we move the superblock to the front of its fullness
+  group." Susequent allocations will likely be to a superblock that is in
+  memory. Similarly, the free lists are LIFO with the goal of re-using
+  blocks already in cache.
+- to allocate, we check the processor's local heap for SB of the right
+  size class, then for SB that is empty. If none found, check the global
+  heap. If none found, then a superblock is allocated to that thread's heap.
+- seems to lock on the individual heaps and the superblocks
 
 ### CMU #############################################################
 - mm_init calls mem_init and sbrks one page of memory. In the heap
