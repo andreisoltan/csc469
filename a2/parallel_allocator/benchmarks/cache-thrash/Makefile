@@ -10,7 +10,15 @@ CC = gcc
 CC_FLAGS = -O3 -I$(INCLUDES) -L $(LIBDIR)
 CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
-all: cache-thrash-kheap cache-thrash-cmu cache-thrash-libc
+all: cache-thrash-kheap cache-thrash-cmu cache-thrash-libc cache-thrash-amalloc
+
+# Allocator based on our Hoard-like
+
+cache-thrash-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a
+	$(CC) $(CC_FLAGS) -o $(@) cache-thrash.c $(TOPDIR)/allocators/alloclibs/libamalloc.a -lmmutil -lpthread
+
+cache-thrash-amalloc-dbg: $(DEPENDS_DBG) $(TOPDIR)/allocators/alloclibs/libamalloc_dbg.a
+	$(CC) $(CC_DBG_FLAGS) -o $(@) cache-thrash.c $(TOPDIR)/allocators/alloclibs/libamalloc_dbg.a -lmmutil_dbg -lpthread
 
 # Allocator based on OS/161 kheap
 
