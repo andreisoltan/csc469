@@ -4,10 +4,17 @@ CC_FLAGS = -c -Wall -fmessage-length=0 -pipe -O3 -finline-limit=65000 -fkeep-inl
 
 CC_DBG_FLAGS = -c -Wall -fmessage-length=0 -pipe -g -finline-limit=65000 -fkeep-inline-functions -finline-functions -ffast-math -fomit-frame-pointer -DNDEBUG -I. -I$(TOPDIR)/include -D_REENTRANT=1
 
-all: libkheap libcmumalloc libmmlibc
+all: libkheap libcmumalloc libmmlibc libamalloc
 
 alloclibs:
 	mkdir alloclibs
+
+# Library containing our first Hoard-like allocator
+libamalloc: alloclibs
+	cd a; $(CC) $(CC_FLAGS) malloc.c; ar rs ../alloclibs/libamalloc.a malloc.o
+
+libamalloc_dbg: alloclibs
+	cd a; $(CC) $(CC_DBG_FLAGS) malloc.c; ar rs ../alloclibs/libamalloc_dbg.a malloc.o
 
 # Library containing mm_malloc and mm_free for OS/161 kheap-based allocator
 
