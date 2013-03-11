@@ -108,6 +108,19 @@ int mm_init (void) {
         // Initialize memory system
         mem_init();
 
+        // TODO: initial sbrk should be the size of a superblock. We will
+        // manage this initial superblock as we will with other normal
+        // allocation requests, *dseg_lo will have a superblock_t written
+        // on it.
+        //
+        // Once we know the size of the allocator's data structures, we
+        // align that up to some sub-block size class and construct the
+        // superblock's free list in the remaining space.
+        //
+        // The size class does not matter, but it should be some size that
+        // will not be left unused (in which case the allocator's data 
+        // structures will effectively be consuming 8k.)
+
         // Should we align this to a page boundary? I am doing alignment
         // to 64 to accomodate cache-lines
         n_cpu = getNumProcessors();
@@ -177,6 +190,13 @@ void *mm_malloc (size_t size) {
     return ret;    
 }
 
+// TODO:we need some way to figure out the superblock's size class --
+// probably store it in the struct.)
+
+// Upon a mm_free call, from ptr we can find the 8k superblock boundary
+// and then the free list. Given the size class (from the struct) we can
+// check (rudimentarily) that this was a an assigned block, must align wth
+// size-class
 void mm_free (void *ptr) {
     // Make sure the pointer is from memory that we allocated. Should be
     // within [dseg_lo + ( (n_cores+1)*(sizeof(heap_t)) ), dseg_hi]

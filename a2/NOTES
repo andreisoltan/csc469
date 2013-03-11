@@ -18,7 +18,7 @@ the three supplied allocators
   - can use mem_pagesize()
 - Miser paper suggests redirecting requests over 256 bytes to system malloc
   implementation (most workloads do not have many of that size) not sure if
-  we are allowed to do that or not. Will email Angela.
+  we are allowed to do that or not. Will email Angela. [Not allowed]
 - Palloc1 choses not to store metadata inside allocated pages because they
   believe allocations of exactly one page are an important use case. They
   use an internal malloc to allocate small chunks of space for metadata.
@@ -27,6 +27,7 @@ the three supplied allocators
   may not obtain any further locks.
 - mem_sbrk calls must be serialized. This we can guarantee if we only call
   mem_sbrk while holding the global heap lock.
+
 
 ### kheap ###########################################################
 - assumes 4k pages
