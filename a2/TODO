@@ -4,13 +4,12 @@ a/malloc.c:
 - accounting of usage/allocated
 - releasing superblocks to global heap
 - locking on superblocks?
+- Hoard does weird locking, try it out
 
 Design doc
 - skeleton latex?
 - learn to do bibliography
 
 Makefile
-- build a/malloc
 - add doc building to makefile
 - add submission tarballing to Makefile?
-- add build instructions for allocators/a

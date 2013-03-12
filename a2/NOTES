@@ -86,7 +86,8 @@ compile consistency checks.
   size class, then for SB that is empty. If none found, check the global
   heap. If none found, then a superblock is allocated to that thread's heap.
 - seems to lock on the individual heaps and the superblocks
-
+- malloc only locks on the core-specific heap
+- free locks the superblock and then the owning heap.
 ### CMU #############################################################
 - mm_init calls mem_init and sbrks one page of memory. In the heap
   it sets up the following structure:

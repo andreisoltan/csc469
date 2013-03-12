@@ -32,7 +32,8 @@ name_t myname = {
      "g2prindi@cdf.toronto.edu"
 };
 
-#define ALIGN_UP_TO(p,X) ((void *)((((unsigned long)(p) + X - 1) / X ) * X))
+#define ALIGN_UP_TO(p,X)   ((void *)((((unsigned long)(p) + X - 1) / X ) * X))
+#define ALIGN_DOWN_TO(p,X) ((void *)(((unsigned long)(p) / X) * X))
 
 // Empty fraction before superblock is released
 #define SB_EMPTYFRAC ( 0.25 )
@@ -50,19 +51,27 @@ name_t myname = {
 #define NSIZES 9
 static const size_t size_classes[NSIZES] =
     { 0, 8, 16, 32, 64, 128, 256, 512, 1024 };
+// We make the first superpage (the one with our bookkeeping stuff on it)
+// of size class 1 arbitrarily, but with the hope that programs will use
+// allocations of that size and the space after our allocators data
+// structures will not be wasted.
+#define FIRST_SB_CLASS 1
 
 // Each superblock tracks a free list (LIFO) of available blocks
-typedef struct free_list_s {
-    struct free_list_s *next;
-} free_list_t;
+typedef struct freelist_s freelist_t;
+struct freelist_s {
+    freelist_t *next;
+};
 
 #define SB_HAS_FREE(sb_ptr) ( (sb_ptr)->free != NULL )
 typedef struct superblock_s superblock_t;
 struct superblock_s {
     //pthread_mutex_t lock;
     int usage;
+    int heap;
+    size_t size_class;
     superblock_t *next;
-    free_list_t *free;
+    freelist_t *free;
 };
 
 // For each CPU heap and the global heap we will need:
@@ -81,11 +90,15 @@ typedef struct heap_s {
     superblock_t *sbs[NSIZES];
 } heap_t;
 
-#define GLOB_HEAP ( (heap_t*)dseg_lo )
-#define CPU_HEAPS ( ((heap_t*)dseg_lo) + 1 )
+#define GLOB_HEAP ((heap_t*)(dseg_lo + sizeof(superblock_t)))
+#define CPU_HEAPS (GLOB_HEAP + 1)
 
 superblock_t* sb_find_free(superblock_t **sb);
 superblock_t* sb_get(int core, int sz);
+freelist_t* fl_init(void *first, void *limit, size_t sz);
+
+size_t pagesize = 0;
+size_t sb_size = 0;
 
 /**
  * Do initial setup for memory allocator.
@@ -98,20 +111,34 @@ superblock_t* sb_get(int core, int sz);
  */
 int mm_init (void) {
 
-    void *base = NULL;
-    heap_t *heap = NULL;
     int i = 0;
     int n_cpu = 0;
     size_t alloc_size = 0;
+    void *base = NULL;
+    heap_t *heap = NULL;
+    superblock_t *sb = NULL;
+    freelist_t *fl = NULL;
 
     if (dseg_lo == NULL && dseg_hi == NULL) {
+
+        // Calculate some parmeters
+        pagesize = mem_pagesize();
+        sb_size = pagesize * SB_PAGES; 
+        n_cpu = getNumProcessors();
+
         // Initialize memory system
         mem_init();
 
-        // TODO: initial sbrk should be the size of a superblock. We will
-        // manage this initial superblock as we will with other normal
-        // allocation requests, *dseg_lo will have a superblock_t written
-        // on it.
+        // initial sbrk for our allocator's book-keeping data
+        // structures will be the size of a superblock. We do 
+        // this in order to keep things in our chunk of memory aligned
+        // with superblock-sized boundaries.
+        //
+        // Because we don't have 8k of allocator data structures, we
+        // want to make the remainder of the superblock available to
+        // callers. Therefore we will manage this initial superblock as
+        // we will with other normal allocation requests, *dseg_lo will
+        // have a superblock_t written on it.
         //
         // Once we know the size of the allocator's data structures, we
         // align that up to some sub-block size class and construct the
@@ -121,13 +148,12 @@ int mm_init (void) {
         // will not be left unused (in which case the allocator's data 
         // structures will effectively be consuming 8k.)
 
-        // Should we align this to a page boundary? I am doing alignment
-        // to 64 to accomodate cache-lines
-        n_cpu = getNumProcessors();
-        alloc_size = (size_t) ALIGN_UP_TO(((n_cpu+1)*sizeof(heap_t)), 64);
+        // We'll calculate the size of our bookkeeping data (# cores + 1
+        // for the heaps, plus the superblock)
+        alloc_size = sizeof(heap_t) * (n_cpu+1) + sizeof(superblock_t);
 
-        // Get enough memory to set up our own book-keeping structures.
-        if ( (base = mem_sbrk(alloc_size)) ) {
+        // Get some memory (a superblock's worth)
+        if ( (base = mem_sbrk(sb_size)) ) {
 
             // Zero the heap structures
             bzero(base, alloc_size);
@@ -136,6 +162,24 @@ int mm_init (void) {
             heap =  GLOB_HEAP;
             for (i = 0; i < n_cpu+1; i++, heap++)
                 pthread_mutex_init(&(heap->lock), NULL);
+
+            // Set up this superblock's header
+            sb = (superblock_t *)base;
+            sb->size_class = FIRST_SB_CLASS;
+            //sb->next = NULL; // not necessary, we bzero'd this ^^
+            //sb->usage = 0;  // not necessary, we bzero'd this ^^
+            
+            // Find where we can start laying down free list nodes after
+            // the heap data:
+            fl = (freelist_t *) ( ((unsigned long)base) +
+                ((unsigned long) ALIGN_UP_TO(alloc_size, size_classes[FIRST_SB_CLASS])));
+
+            // Build freelist and register in superblock header
+            sb->free = fl_init(fl, dseg_hi, size_classes[FIRST_SB_CLASS]); 
+
+            // Lastly, we'll associate this superblock with the global
+            // heap:
+            GLOB_HEAP->sbs[FIRST_SB_CLASS] = sb;
 
         } else {
             fprintf(stderr, "Failed to initialize heap. Exiting.\n");
@@ -176,30 +220,39 @@ void *mm_malloc (size_t size) {
 
     // Take block from freelist
     ret = sb->free;
-
-    // TODO: update accounting, rebalance
-    sb->usage++;
-    CPU_HEAPS[cpu].usage++;
-
-    // Put the SB at the head of the list for this cpu/size-class
-    sb->next = CPU_HEAPS[cpu].sbs[class];
-    CPU_HEAPS[cpu].sbs[class] = sb;
+    sb->free = sb->free->next;
 
     // Unlock and return
     pthread_mutex_unlock(&(CPU_HEAPS[cpu].lock));
     return ret;    
 }
 
-// TODO:we need some way to figure out the superblock's size class --
-// probably store it in the struct.)
-
-// Upon a mm_free call, from ptr we can find the 8k superblock boundary
-// and then the free list. Given the size class (from the struct) we can
-// check (rudimentarily) that this was a an assigned block, must align wth
-// size-class
+// Frees the memory associated with ptr. If ptr was not a previously
+// allocated memory segment returned by mm_malloc, or ptr was previously
+// freed behaviour is undefined. 
 void mm_free (void *ptr) {
-    // Make sure the pointer is from memory that we allocated. Should be
-    // within [dseg_lo + ( (n_cores+1)*(sizeof(heap_t)) ), dseg_hi]
+
+    superblock_t *sb = NULL;
+
+    // Make sure the pointer is from memory that we allocated
+    if ( (ptr < dseg_lo) || (ptr > dseg_hi) )
+        return;
+    
+    // TODO: If this is a large allocation deal with it separately...
+
+    // General case:
+    // Find nearest superblock alignment below *ptr
+    sb = ALIGN_DOWN_TO(ptr, sb_size);
+
+    // Insert the freed block at the head of the list (LIFO)
+    ((freelist_t*)ptr)->next = sb->free;
+    sb->free = (freelist_t*)ptr;
+
+    // Adjust statistics
+    sb->usage -= size_classes[sb->size_class];
+    GLOB_HEAP[sb->heap].usage -= size_classes[sb->size_class];
+
+    // TODO: rebalance
 }
 
 // Returns a pointer to a superblock having free blocks on it in CPU #core's
@@ -213,33 +266,77 @@ void mm_free (void *ptr) {
 // from the global heap), sb_get will move the superblock into the appropriate
 // list
 superblock_t* sb_get(int core, int sz) {
-    char init_free = 0;
+
+    char from_global = 0;   // moving superblock from global heap 
+    char new_sb = 0;        // newly allocated superblock
+    char new_or_empty = 0;  // need to build superblock's freelist
     superblock_t *result = NULL;
 
     if ((result = sb_find_free(&(CPU_HEAPS[core].sbs[sz]))) == NULL) {
         if ((result = sb_find_free(&(CPU_HEAPS[core].sbs[0]))) == NULL) {
+            // We didn't find anything suitable on our own heap, will get
+            // from the global, or a new one. In either of those cases
             // Lock the global heap before going up there to look...
+            // TODO: Hoard doesn't seem to lock the global heap, why?!
             pthread_mutex_lock(&(GLOB_HEAP->lock));
             if ((result = sb_find_free(&(GLOB_HEAP->sbs[sz]))) == NULL) {
                 if ((result = sb_find_free(&(GLOB_HEAP->sbs[0]))) == NULL) {
-                    // TODO: result = new sbrk'ed superblock
-                    // TODO: usage = 0; next = NULL;
+                    // Nothing available, make new space...
+                    new_sb = 1;
+                    result = (superblock_t *) mem_sbrk(sb_size);
+                    bzero(result, sizeof(superblock_t)); 
+                } else {
+                    from_global = 1;
                 }
-                // If we are here, we either found an empty SB in the 
-                // global heap or we mem_sbrk'ed a new SB. In either case
-                // we'll need to initialize its freelist.
-                init_free = 1;
+                // Found an empty SB in the global heap or we mem_sbrk'ed a
+                // new SB, we'll need to initialize its freelist.
+                new_or_empty = 1;
+            } else {
+                // Found a non-empty SB in global
+                from_global = 1;
             }
+            // TODO: Hoard doesn't seem to lock the global heap, why?!
             // Done with the global heap
             pthread_mutex_unlock(&(GLOB_HEAP->lock));
         } else {
-            // Found an empty SB, before returning initialize its freelist
-            init_free = 1;
+            // Found an empty SB in this core's heap, must init its freelist
+            new_or_empty = 1;
         }
+    } // else {
+//      We found a non-empty SB in this core's heap
+//  }
+
+    // Put the SB at the head of the list for this cpu/size-class
+    result->next = CPU_HEAPS[core].sbs[sz];
+    CPU_HEAPS[core].sbs[sz] = result;
+
+    // Adjust core's heap stats if necessary
+    if (new_sb) {
+        result->heap = core + 1;
+        CPU_HEAPS[core].allocated += sb_size;
+        //new_or_empty = 1; // redundant
     }
 
-    if (init_free) {
-        // TODO: init free list for size sz
+    // Adjust global/core stats if necessary
+    if (from_global) {
+        result->heap = core + 1;
+        GLOB_HEAP->allocated -= sb_size;
+        GLOB_HEAP->usage -= result->usage;
+        CPU_HEAPS[core].allocated += sb_size;
+    //    CPU_HEAPS[core].usage += result->usage;
+    }
+
+    // Increment usage counters
+    result->usage += size_classes[sz];
+    CPU_HEAPS[core].usage += size_classes[sz];
+
+    // If we found a new or empty SB, init its freelist, assign size class
+    if (new_or_empty) {
+        result->free = fl_init(
+            (void*) (((unsigned long)result) + sizeof(superblock_t)),
+            (void*) (((unsigned long)result) + sb_size),
+            size_classes[sz]);
+        result->size_class = sz;
     }
 
     // Now we are guaranteed to have a superblock with free space pointed
@@ -252,6 +349,9 @@ superblock_t* sb_get(int core, int sz) {
 // pointer to it. If none is found, return NULL.
 //
 // ASSUMES THAT ANY LOCKS GOVERNING THE SUPERBLOCK IN QUESTION ARE ALREADY HELD
+//
+// SUPERBLOCKS RETURNED BY THIS FUNCTION ARE NOT IN ANY HEAP'S LIST, YOU
+// HAVE TO PUT THEM SOMEWHERE.
 superblock_t* sb_find_free(superblock_t **sb) {
     
     superblock_t *prev = NULL;
@@ -269,11 +369,33 @@ superblock_t* sb_find_free(superblock_t **sb) {
             // take the thing we're returning out of the list.
             *sb = ret->next;
         } else {
-            // This was not the first thing in the list
+            // This was not the first thing in the list, patch over it.
             prev->next = ret->next;
         }
         ret->next = NULL;
     }
 
     return ret;
+}
+
+// Starting at *first, fl_init() writes out freelist_t nodes in a linked list
+// spaced by sz bytes, stopping at *limit. Returns *first upon success.
+freelist_t* fl_init(void *first, void *limit, size_t sz) {
+
+    freelist_t *fl = (freelist_t *) first;
+    unsigned long next_fl = ((unsigned long) fl) + sz;
+
+    // Walk through the rest of the superblock in increments
+    // equal to the chunk size while building the free list
+    while (next_fl < (unsigned long)limit) {
+        fl->next = (freelist_t*) next_fl;
+        fl = (freelist_t*) next_fl;
+        next_fl += sz;
+    }
+
+    // The last freelist node should point nowhere
+    fl->next = NULL;
+
+    return fl;
+
 }
