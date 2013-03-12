@@ -19,6 +19,15 @@
 #include "memlib.h"
 #include "mm_thread.h"
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
+// This debug_print macro is borrowed from Jonathan Leffler, here:
+// http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
+#define debug_print(...) \
+            do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
+
 name_t myname = {
      /* team name to be displayed on webpage */
      "Ultra TeamSquad Alpha",
@@ -119,15 +128,22 @@ int mm_init (void) {
     superblock_t *sb = NULL;
     freelist_t *fl = NULL;
 
+    debug_print("mm_init() | entry\n");
+
     if (dseg_lo == NULL && dseg_hi == NULL) {
+
+        debug_print("mm_init() | calling mem_init...\n");
+
+        // Initialize memory system
+        mem_init();
 
         // Calculate some parmeters
         pagesize = mem_pagesize();
         sb_size = pagesize * SB_PAGES; 
         n_cpu = getNumProcessors();
 
-        // Initialize memory system
-        mem_init();
+        debug_print("mm_init() | pagesize: %d, sb_size: %d, n_cpu: %d\n",
+            pagesize, sb_size, n_cpu);
 
         // initial sbrk for our allocator's book-keeping data
         // structures will be the size of a superblock. We do 
@@ -151,6 +167,8 @@ int mm_init (void) {
         // We'll calculate the size of our bookkeeping data (# cores + 1
         // for the heaps, plus the superblock)
         alloc_size = sizeof(heap_t) * (n_cpu+1) + sizeof(superblock_t);
+
+        debug_print("mm_init() | alloc_size: %d\n", alloc_size);
 
         // Get some memory (a superblock's worth)
         if ( (base = mem_sbrk(sb_size)) ) {
@@ -178,7 +196,7 @@ int mm_init (void) {
             sb->free = fl_init(fl, dseg_hi, size_classes[FIRST_SB_CLASS]); 
 
             // Lastly, we'll associate this superblock with the global
-            // heap:
+            // heap
             GLOB_HEAP->sbs[FIRST_SB_CLASS] = sb;
 
         } else {
@@ -235,7 +253,7 @@ void mm_free (void *ptr) {
     superblock_t *sb = NULL;
 
     // Make sure the pointer is from memory that we allocated
-    if ( (ptr < dseg_lo) || (ptr > dseg_hi) )
+    if ( ((char*)ptr < dseg_lo) || ((char *)ptr > dseg_hi) )
         return;
     
     // TODO: If this is a large allocation deal with it separately...

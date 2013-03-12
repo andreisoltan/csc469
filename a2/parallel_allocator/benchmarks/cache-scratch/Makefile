@@ -12,6 +12,8 @@ CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
 all: cache-scratch-kheap cache-scratch-cmu cache-scratch-libc cache-scratch-amalloc
 
+ours: cache-scratch-amalloc cache-scratch-amalloc-dbg
+
 # Allocator based on our Hoard-like
 
 cache-scratch-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a

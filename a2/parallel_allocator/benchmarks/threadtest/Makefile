@@ -12,6 +12,8 @@ CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
 all: threadtest-kheap threadtest-cmu threadtest-libc threadtest-amalloc
 
+ours: threadtest-amalloc threadtest-amalloc-dbg
+
 # Our first Hoard-like
 threadtest-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a
 	$(CC) $(CC_FLAGS) -o $(@) threadtest.c $(TOPDIR)/allocators/alloclibs/libamalloc.a -lmmutil -lpthread

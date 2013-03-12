@@ -12,6 +12,8 @@ CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
 all: larson-kheap larson-cmu larson-libc larson-amalloc
 
+ours: larson-amalloc larson-amalloc-dbg
+
 # Allocator based on our Hoard-like
 
 larson-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a
