@@ -20,6 +20,9 @@ program:
 	cd benchmarks/threadtest && make
 	cd benchmarks/larson && make
 
+all-test: program
+	./benchmarks/runall.pl $(TOPDIR)/benchmarks
+
 runall-tests: program
 	rm -f $(LINKNAME)
 	mkdir -p $(RESULTDIR)

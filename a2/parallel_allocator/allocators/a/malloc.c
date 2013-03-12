@@ -49,6 +49,7 @@ name_t myname = {
 
 // Size of a superblock in pages
 #define SB_PAGES 2
+//#define SB_PAGES 1
 
 // Number of free superblocks before we release one
 #define SB_RELTHRESHOLD 4
@@ -128,11 +129,13 @@ int mm_init (void) {
     superblock_t *sb = NULL;
     freelist_t *fl = NULL;
 
-    debug_print("mm_init() | entry\n");
+    debug_print("%20s|entry; sizeof(heap_t): %d, "
+        "sizeof(superblock_t): %d\n", "mm_init", 
+        sizeof(heap_t), sizeof(superblock_t));
 
     if (dseg_lo == NULL && dseg_hi == NULL) {
 
-        debug_print("mm_init() | calling mem_init...\n");
+        //debug_print("%20s|calling mem_init...\n", "mem_init");
 
         // Initialize memory system
         mem_init();
@@ -142,8 +145,8 @@ int mm_init (void) {
         sb_size = pagesize * SB_PAGES; 
         n_cpu = getNumProcessors();
 
-        debug_print("mm_init() | pagesize: %d, sb_size: %d, n_cpu: %d\n",
-            pagesize, sb_size, n_cpu);
+        debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
+            "mem_init", pagesize, sb_size, n_cpu);
 
         // initial sbrk for our allocator's book-keeping data
         // structures will be the size of a superblock. We do 
@@ -168,10 +171,12 @@ int mm_init (void) {
         // for the heaps, plus the superblock)
         alloc_size = sizeof(heap_t) * (n_cpu+1) + sizeof(superblock_t);
 
-        debug_print("mm_init() | alloc_size: %d\n", alloc_size);
+        debug_print("%20s|alloc_size: %d\n", "mm_init", alloc_size);
 
         // Get some memory (a superblock's worth)
         if ( (base = mem_sbrk(sb_size)) ) {
+
+            debug_print("%20s|sb@%p created\n", "mm_init", base);
 
             // Zero the heap structures
             bzero(base, alloc_size);
@@ -227,6 +232,9 @@ void *mm_malloc (size_t size) {
         exit(1);
     }
 
+    //debug_print("%20s|cpu: %d, size: %d, class: %d\n",
+    //    "mm_malloc", cpu, size, size_classes[class]);
+
     pthread_mutex_lock(&(CPU_HEAPS[cpu].lock));
 
     // Found our size class (size_classes[class] >= size), get an
@@ -242,7 +250,10 @@ void *mm_malloc (size_t size) {
 
     // Unlock and return
     pthread_mutex_unlock(&(CPU_HEAPS[cpu].lock));
-    return ret;    
+    
+//    debug_print("%20s|%p\n", "mm_malloc", ret);
+    
+    return ret; 
 }
 
 // Frees the memory associated with ptr. If ptr was not a previously
@@ -260,7 +271,13 @@ void mm_free (void *ptr) {
 
     // General case:
     // Find nearest superblock alignment below *ptr
-    sb = ALIGN_DOWN_TO(ptr, sb_size);
+    //sb = ALIGN_DOWN_TO(ptr, sb_size);
+    // We have to be careful about dseg_lo not superblock, but page aligned
+    sb = (superblock_t*) (
+        ( (char*) ALIGN_DOWN_TO(((char*)ptr - dseg_lo), sb_size) )
+        + (unsigned long) dseg_lo );
+
+//    debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
 
     // Insert the freed block at the head of the list (LIFO)
     ((freelist_t*)ptr)->next = sb->free;
@@ -303,6 +320,8 @@ superblock_t* sb_get(int core, int sz) {
                     new_sb = 1;
                     result = (superblock_t *) mem_sbrk(sb_size);
                     bzero(result, sizeof(superblock_t)); 
+                    debug_print("%20s|sb@%p created (core %d, sz %d)\n",
+                        "sb_get", result, core, size_classes[sz]);
                 } else {
                     from_global = 1;
                 }
@@ -320,9 +339,9 @@ superblock_t* sb_get(int core, int sz) {
             // Found an empty SB in this core's heap, must init its freelist
             new_or_empty = 1;
         }
-    } // else {
-//      We found a non-empty SB in this core's heap
-//  }
+    } else {
+        // We found a non-empty SB in this core's heap
+    }
 
     // Put the SB at the head of the list for this cpu/size-class
     result->next = CPU_HEAPS[core].sbs[sz];
@@ -351,7 +370,7 @@ superblock_t* sb_get(int core, int sz) {
     // If we found a new or empty SB, init its freelist, assign size class
     if (new_or_empty) {
         result->free = fl_init(
-            (void*) (((unsigned long)result) + sizeof(superblock_t)),
+            ALIGN_UP_TO((((unsigned long)result) + sizeof(superblock_t)), size_classes[sz]),
             (void*) (((unsigned long)result) + sb_size),
             size_classes[sz]);
         result->size_class = sz;
@@ -400,12 +419,19 @@ superblock_t* sb_find_free(superblock_t **sb) {
 // spaced by sz bytes, stopping at *limit. Returns *first upon success.
 freelist_t* fl_init(void *first, void *limit, size_t sz) {
 
+#ifdef DEBUG
+    int count = 0;
+#endif
+
     freelist_t *fl = (freelist_t *) first;
     unsigned long next_fl = ((unsigned long) fl) + sz;
 
     // Walk through the rest of the superblock in increments
     // equal to the chunk size while building the free list
     while (next_fl < (unsigned long)limit) {
+#ifdef DEBUG
+        count++;
+#endif
         fl->next = (freelist_t*) next_fl;
         fl = (freelist_t*) next_fl;
         next_fl += sz;
@@ -413,6 +439,8 @@ freelist_t* fl_init(void *first, void *limit, size_t sz) {
 
     // The last freelist node should point nowhere
     fl->next = NULL;
+
+    debug_print("%20s|%p .. %p: %d @ %d\n", "fl_init", first, limit, count, sz);
 
     return fl;
 
