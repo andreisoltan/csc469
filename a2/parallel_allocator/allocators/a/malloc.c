@@ -120,6 +120,33 @@ void dbg_print_heap_info(const char *who) {
     }
 #endif
 }
+
+void dbg_print_heap_details(int heap_num) {
+#ifdef DEBUG
+    int i = 0;
+    freelist_t *fl = NULL;
+    superblock_t *sb = & (HEAPS[heap_num]);
+
+    debug_print("heap %d (usage %d)\n\n"
+        "%15s %15s %15s %15s\n",
+        heap_num, sb->usage,
+        "sb_addr", "sz_class", "usage", "fl_len");
+
+    while (sb != NULL) {
+        //fl = sb->free;
+        //while (fl) {
+        //    i++;
+        //    fl = fl->next;
+        //}
+
+        debug_print("%15p %15d %15d %15d\n",
+            sb, sb->size_class, sb->usage, i);
+        
+        sb = sb->next;
+    }
+
+#endif
+}
  
 /**
  * Do initial setup for memory allocator.
@@ -155,8 +182,8 @@ int mm_init (void) {
         sb_size = pagesize * SB_PAGES; 
         n_cpu = getNumProcessors();
 
-        debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
-            who, pagesize, sb_size, n_cpu);
+        //debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
+        //    who, pagesize, sb_size, n_cpu);
 
         // initial sbrk for our allocator's book-keeping data
         // structures will be the size of a superblock. We do 
@@ -181,13 +208,13 @@ int mm_init (void) {
         // for the heaps, plus the superblock)
         alloc_size = sizeof(heap_t) * (n_cpu+1) + sizeof(superblock_t);
 
-        debug_print("%20s|alloc_size: %d\n", who, alloc_size);
+        //debug_print("%20s|alloc_size: %d\n", who, alloc_size);
 
         // Get some memory (a superblock's worth)
         if ( (base = mem_sbrk(sb_size)) ) {
 
-            debug_print("%20s|sb@%p created, size %d\n",
-                who, base, size_classes[FIRST_SB_CLASS]);
+            //debug_print("%20s|sb@%p created, size %d\n",
+            //    who, base, size_classes[FIRST_SB_CLASS]);
 
             // Zero the heap structures
             bzero(base, alloc_size);
@@ -195,7 +222,7 @@ int mm_init (void) {
             // Initialize locks on all heaps
             heap = HEAPS;
             for (i = 0; i < n_cpu+1; i++, heap++) {
-                debug_print("%20s|HEAPS[%d] @ %p\n", who, i, heap);
+                //debug_print("%20s|HEAPS[%d] @ %p\n", who, i, heap);
                 pthread_mutex_init(&(heap->lock), NULL);
             }
 
@@ -219,7 +246,7 @@ int mm_init (void) {
             HEAPS[0].allocated = sb_size;
             HEAPS[0].usage = sizeof(heap_t) * (n_cpu+1);
 
-            dbg_print_heap_info(who);
+            //dbg_print_heap_info(who);
 
         } else {
             fprintf(stderr, "Failed to initialize heap. Exiting.\n");
@@ -250,8 +277,8 @@ void *mm_malloc (size_t size) {
         exit(1);
     }
 
-    debug_print("%20s|cpu: %d, size: %d, class: %d\n",
-        "mm_malloc", cpu, size, size_classes[class]);
+    //debug_print("%20s|cpu: %d, size: %d, class: %d\n",
+    //    "mm_malloc", cpu, size, size_classes[class]);
 
     pthread_mutex_lock(&(HEAPS[cpu+1].lock));
 
@@ -270,7 +297,7 @@ void *mm_malloc (size_t size) {
     pthread_mutex_unlock(&(HEAPS[cpu+1].lock));
     
 //    debug_print("%20s|%p\n", "mm_malloc", ret);
-    dbg_print_heap_info(who);
+    //dbg_print_heap_info(who);
     return ret; 
 }
 
@@ -295,7 +322,9 @@ void mm_free (void *ptr) {
         ( (char*) ALIGN_DOWN_TO(((char*)ptr - dseg_lo), sb_size) )
         + (unsigned long) dseg_lo );
 
-//    debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
+    pthread_mutex_lock(&(HEAPS[sb->heap].lock)); 
+
+    //debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
 
     // Insert the freed block at the head of the list (LIFO)
     ((freelist_t*)ptr)->next = sb->free;
@@ -311,9 +340,11 @@ void mm_free (void *ptr) {
         &&
         (HEAPS[sb->heap].usage <
         (1.0 - SB_EMPTYFRAC) * HEAPS[sb->heap].allocated)) {
-        debug_print("%20s|heap%d should release to global\n",
-            "mm_free", sb->heap);
+        //debug_print("%20s|heap%d should release to global\n",
+        //    "mm_free", sb->heap);
     }
+
+    pthread_mutex_unlock(&(HEAPS[sb->heap].lock));
 }
 
 // Returns a pointer to a superblock having free blocks on it in CPU #core's
@@ -459,7 +490,9 @@ superblock_t* sb_find_free(superblock_t **sb) {
 }
 
 // Starting at *first, fl_init() writes out freelist_t nodes in a linked list
-// spaced by sz bytes, stopping at *limit. Returns *first upon success.
+// spaced by sz bytes, stopping at *limit. Since the freelist_t nodes are
+// written on the beginning of a free block of size sz, the highest that we're
+// allowed to write one is at limit - szReturns *first upon success.
 freelist_t* fl_init(void *first, void *limit, size_t sz) {
 
 //#ifdef DEBUG
@@ -471,7 +504,7 @@ freelist_t* fl_init(void *first, void *limit, size_t sz) {
 
     // Walk through the rest of the superblock in increments
     // equal to the chunk size while building the free list
-    while (next_fl < (unsigned long)limit) {
+    while (next_fl <= (((unsigned long)limit) - sz)) {
 //#ifdef DEBUG
         count++;
 //#endif
