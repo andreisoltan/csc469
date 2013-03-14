@@ -1,13 +1,11 @@
 a/malloc.c:
 - large allocations
-- mm_free
-- accounting of usage/allocated
 - releasing superblocks to global heap
-- locking on superblocks?
-- Hoard does weird locking, try it out
+- locking on superblocks
+- superblocks stored in fullness groups
 
 Design doc
-- skeleton latex?
+- do it
 - learn to do bibliography
 
 Makefile
