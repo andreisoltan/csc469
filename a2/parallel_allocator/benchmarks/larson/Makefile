@@ -10,7 +10,7 @@ CC = gcc
 CC_FLAGS = -O3 -I$(INCLUDES) -L $(LIBDIR)
 CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
-all: larson-kheap larson-cmu larson-libc larson-amalloc
+all: larson-kheap larson-cmu larson-libc larson-amalloc larson-amalloc-dbg
 
 ours: larson-amalloc larson-amalloc-dbg
 

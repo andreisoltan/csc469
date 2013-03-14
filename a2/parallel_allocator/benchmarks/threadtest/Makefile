@@ -10,7 +10,7 @@ CC = gcc
 CC_FLAGS = -O3 -I$(INCLUDES) -L $(LIBDIR)
 CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
-all: threadtest-kheap threadtest-cmu threadtest-libc threadtest-amalloc
+all: threadtest-kheap threadtest-cmu threadtest-libc threadtest-amalloc threadtest-amalloc-dbg
 
 ours: threadtest-amalloc threadtest-amalloc-dbg
 

@@ -4,7 +4,7 @@ CC_FLAGS = -c -Wall -fmessage-length=0 -pipe -O3 -finline-limit=65000 -fkeep-inl
 
 CC_DBG_FLAGS = -c -Wall -fmessage-length=0 -pipe -g -finline-limit=65000 -fkeep-inline-functions -finline-functions -ffast-math -fomit-frame-pointer -DDEBUG -DNDEBUG -I. -I$(TOPDIR)/include -D_REENTRANT=1
 
-all: libkheap libcmumalloc libmmlibc libamalloc
+all: libkheap libcmumalloc libmmlibc libamalloc libamalloc_dbg
 
 ours: libmmlibc libamalloc libamalloc_dbg
 
