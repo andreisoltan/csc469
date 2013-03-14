@@ -1,0 +1,124 @@
+\documentclass{article}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{framed}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{float}
+
+\author{Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu
+\and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
+\title{CSC469: Assignment 2}
+\date{15 March, 2013}
+
+% Show paragraphs in table of contents
+\setcounter{tocdepth}{5}
+
+\lstset{
+    mathescape=false,
+    basicstyle=\small,
+    stringstyle=\ttfamily, % typewriter type for strings
+    showstringspaces=false } % no special string spaces
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{Introduction}
+
+Insert smart text here...
+
+Restate the problem (multithreaded memory allocator). Mention the papers we
+used (Hoard, Miser) and other resources. Describe (succicntly) the goal we are 
+trying to achieve (speed, scalability, false sharing avoidance, low fragmentation). 
+This is a sort of related works, in a way.
+
+Describe the structure of the report. (i.e. section 1 - intro, etc.)
+
+\newpage
+\section{Allocator Design}
+
+Insert smart text about the design of our allocator...
+
+What metadata do we maintain? Why do we need it?
+\begin{itemize}
+	\item for the allocator
+	\item for the heap(s)
+	\item for he superblock(s)
+	\item for the blocks inside the superblock
+\end{itemize}
+
+Where do we put the metadata? Why? (e.g. the structs for ht efree list at the 
+end of the free memory block, because that makes it easier to merge to the 
+right, where there is usally free memory. Just an example, not necessarily true.)
+
+How do we handle rhe really large allocations?
+
+Was there something we did to boost performance? (mention memory usage, 
+processing, internal and external fragmentation (with no numbers?))
+
+What other questions do we want to answer or design decisions that we think
+are worth mentioning?
+
+\newpage
+\section{Design Alternatives}
+
+Insert smart text about other features we considered for our allocator...
+
+Was there something that would work better but is too hard to develop?
+
+Was there something that was easier to develop but would give slightly slower
+performance?
+
+Was there something we tried, but found that it wouldn't work well (or took too 
+much time/effort), and decided in favor of a simpler solution?
+
+Was there something we did, avoided or fixed to have good performance?
+
+Did we decided in favor or against something regarding fragmentation?
+
+Should this a subsection of the Design section above?
+
+\newpage
+\section{Performance Analysis}
+
+Insert smart text about how well our allocator performs...
+
+\textbf{MUST HAVE} or we lose marks for not mentioning (from grading rubric)
+\begin{itemize}
+	\item Sequential Speed
+	\item Scalability
+	\item False Sharing Avoidance
+	\item Fragmentation
+\end{itemize}
+
+Describe the experimental setup. (Subsection?)
+
+Describe the performance measurements. \textbf{Must} have plenty of numbers 
+(i.e. not "very few" according to rubric). (Subsection?)
+
+Describe the memory usage, utilization, overhead, internal and external 
+fragmentation. Pay significant attention to \textbf{fragmentation} and 
+\textbf{usage}. Look at Hoard paper, performance section. 
+
+\newpage
+\section{Conclusion}
+
+Insert smart text about how we did awesome... This might take work. :)
+
+\newpage
+\appendix
+\section{References}
+
+Cite the paper that we use, and any other resources. There is most likely another, better way to cite research stuff in \LaTeX{}.
+
+\section{Tools}
+
+Do we need this? Do we have something to write for this? (e.g scripts, programs, other tools, etc.)
+
+
+\end{document}
