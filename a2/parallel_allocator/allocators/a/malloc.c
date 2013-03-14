@@ -57,10 +57,10 @@ name_t myname = {
 // Size classes
 // TODO: try bringing this down to maybe 6 classes (256), see Miser
 #define BLOCK_SZ_SM 8 // We'll use the "0 size" entry for empty superblocks
-#define BLOCK_SZ_LG 1024
-#define NSIZES 9
+#define BLOCK_SZ_LG 4096 
+#define NSIZES 11
 static const size_t size_classes[NSIZES] =
-    { 0, 8, 16, 32, 64, 128, 256, 512, 1024 };
+    { 0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
 // We make the first superpage (the one with our bookkeeping stuff on it)
 // of size class 1 arbitrarily, but with the hope that programs will use
 // allocations of that size and the space after our allocators data
@@ -76,7 +76,7 @@ struct freelist_s {
 #define SB_HAS_FREE(sb_ptr) ( (sb_ptr)->free != NULL )
 typedef struct superblock_s superblock_t;
 struct superblock_s {
-    //pthread_mutex_t lock;
+    pthread_mutex_t lock;
     int usage;
     int heap;
     size_t size_class;
@@ -229,6 +229,7 @@ int mm_init (void) {
             // Set up this superblock's header
             sb = (superblock_t *)base;
             sb->size_class = FIRST_SB_CLASS;
+            pthread_mutex_init(&(sb->lock), NULL);
             //sb->next = NULL; // not necessary, we bzero'd this ^^
             //sb->usage = 0;  // not necessary, we bzero'd this ^^
             
@@ -271,7 +272,7 @@ void *mm_malloc (size_t size) {
         class++;
 
     // TODO: large allocations
-    if (class > NSIZES) {
+    if (class == NSIZES) {
         // Larger than we track in our size classes
         fprintf(stderr, "TODO: large allocations\n");
         exit(1);
@@ -294,6 +295,7 @@ void *mm_malloc (size_t size) {
     sb->free = sb->free->next;
 
     // Unlock and return
+    // TODO: unlock the superblock?
     pthread_mutex_unlock(&(HEAPS[cpu+1].lock));
     
 //    debug_print("%20s|%p\n", "mm_malloc", ret);
@@ -322,6 +324,7 @@ void mm_free (void *ptr) {
         ( (char*) ALIGN_DOWN_TO(((char*)ptr - dseg_lo), sb_size) )
         + (unsigned long) dseg_lo );
 
+    pthread_mutex_lock(&(sb->lock)); 
     pthread_mutex_lock(&(HEAPS[sb->heap].lock)); 
 
     //debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
@@ -345,6 +348,7 @@ void mm_free (void *ptr) {
     }
 
     pthread_mutex_unlock(&(HEAPS[sb->heap].lock));
+    pthread_mutex_unlock(&(sb->lock)); 
 }
 
 // Returns a pointer to a superblock having free blocks on it in CPU #core's
@@ -371,7 +375,6 @@ superblock_t* sb_get(int core, int sz) {
             // We didn't find anything suitable on our own heap, will get
             // from the global, or a new one. In either of those cases
             // Lock the global heap before going up there to look...
-            // TODO: Hoard doesn't seem to lock the global heap, why?!
             pthread_mutex_lock(&(HEAPS[0].lock));
             //debug_print("%20s|global, size %d...\n", "sb_get", size_classes[sz]);
             if ((result = sb_find_free(&(HEAPS[0].sbs[sz]))) == NULL) {
@@ -380,7 +383,8 @@ superblock_t* sb_get(int core, int sz) {
                     // Nothing available, make new space...
                     new_sb = 1;
                     result = (superblock_t *) mem_sbrk(sb_size);
-                    bzero(result, sizeof(superblock_t)); 
+                    bzero(result, sizeof(superblock_t));
+                    pthread_mutex_init(&(result->lock), NULL);
                 } else {
                     from_global = 1;
                 }
@@ -391,7 +395,6 @@ superblock_t* sb_get(int core, int sz) {
                 // Found a non-empty SB in global
                 from_global = 1;
             }
-            // TODO: Hoard doesn't seem to lock the global heap, why?!
             // Done with the global heap
             pthread_mutex_unlock(&(HEAPS[0].lock));
         } else {
@@ -448,11 +451,13 @@ superblock_t* sb_get(int core, int sz) {
     return result;
 }
 
+
+// TODO: Lock the SB before returning?
 // Looks through the superblock list starting at *sb for one having free space
 // Upon finding such a superblock, removes it from the list and returns a
 // pointer to it. If none is found, return NULL.
 //
-// ASSUMES THAT ANY LOCKS GOVERNING THE SUPERBLOCK IN QUESTION ARE ALREADY HELD
+// ASSUMES THAT ANY LOCKS GOVERNING THE HEAP WE ARE SEARCHING ARE ALREADY HELD
 //
 // SUPERBLOCKS RETURNED BY THIS FUNCTION ARE NOT IN ANY HEAP'S LIST, YOU
 // HAVE TO PUT THEM SOMEWHERE.
