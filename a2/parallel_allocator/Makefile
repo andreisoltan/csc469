@@ -40,3 +40,6 @@ clean:
 	cd benchmarks/cache-thrash && make clean
 	cd benchmarks/threadtest && make clean
 	cd benchmarks/larson && make clean
+
+clean-results:
+	rm -rfv benchmarks/*/Results
