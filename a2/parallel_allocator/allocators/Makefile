@@ -6,7 +6,7 @@ CC_DBG_FLAGS = -c -Wall -fmessage-length=0 -pipe -g -finline-limit=65000 -fkeep-
 
 all: libkheap libcmumalloc libmmlibc libamalloc
 
-ours: libamalloc libamalloc_dbg
+ours: libmmlibc libamalloc libamalloc_dbg
 
 alloclibs:
 	mkdir alloclibs
