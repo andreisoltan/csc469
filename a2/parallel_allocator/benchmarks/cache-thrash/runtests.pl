@@ -21,8 +21,8 @@ foreach $name ("libc", "kheap", "cmu", "amalloc") {
     }
 
     # Run tests for 1 to 8 threads
-    #for (my $i = 1; $i <= 8; $i++) {
-    for (my $i = 1; $i <= 2; $i++) {
+    for (my $i = 1; $i <= 8; $i++) {
+#    for (my $i = 1; $i <= 2; $i++) {
 	print "Thread $i\n";
 	my $cmd1 = "echo \"\" > $dir/Results/$name/cache-thrash-$i";
 	system "$cmd1";

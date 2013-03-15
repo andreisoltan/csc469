@@ -1,3 +1,13 @@
+# Test output
 results*
 */Results/
+
+# Graph output
 */*.ps
+
+# Binaries
+*/*-cmu
+*/*-libc
+*/*-kheap
+*/*-amalloc
+*/*-amalloc-dbg

@@ -12,7 +12,7 @@ if (!-e "$dir/Results") {
 	or die "Cannot make $dir/Results: $!";
 }
 
-foreach $name ("libc", "kheap", "cmu") {
+foreach $name ("libc", "kheap", "cmu", "amalloc") {
     print "name = $name\n";
     # Create subdirectory for current allocator results
     if (!-e "$dir/Results/$name") {

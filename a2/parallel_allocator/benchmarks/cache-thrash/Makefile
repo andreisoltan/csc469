@@ -10,7 +10,7 @@ CC = gcc
 CC_FLAGS = -O3 -I$(INCLUDES) -L $(LIBDIR)
 CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 
-all: cache-thrash-kheap cache-thrash-cmu cache-thrash-libc cache-thrash-amalloc
+all: cache-thrash-kheap cache-thrash-cmu cache-thrash-libc cache-thrash-amalloc cache-thrash-amalloc-dbg
 
 ours: cache-thrash-amalloc cache-thrash-amalloc-dbg
 
