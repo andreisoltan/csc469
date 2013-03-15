@@ -23,6 +23,147 @@
 #define DEBUG 0
 #endif
 
+////////////////////////////////////////////////////////////
+
+/* A ll_node contains one of the links of the linked list. */
+typedef struct _link {
+    const void * data;
+    struct _link * prev;
+    struct _link * next;
+} ll_node;
+
+typedef struct _link megablock_t;
+
+/* linked_list_t contains a linked list. */
+typedef struct linked_list
+{
+    ll_node * first;
+    ll_node * last;
+}
+linked_list_t;
+
+/* The following function initializes the linked list by putting zeros
+   into the pointers containing the first and last links of the linked
+   list. */
+
+static void
+linked_list_init (linked_list_t * list)
+{
+    list->first = list->last = 0;
+}
+
+/* The following function adds a new link to the end of the linked
+   list. The node has to be preallocated and have the data set. */
+static void
+linked_list_add (linked_list_t * list, ll_node * link)
+{
+
+    if (! link) {
+        fprintf (stderr, "can't insert invalid node.\n");
+        exit (EXIT_FAILURE);
+    }
+
+    if (list->last) {
+        /* Join the two final links together. */
+        list->last->next = link;
+        link->prev = list->last;
+        list->last = link;
+    } else {
+        list->first = link;
+        list->last = link;
+    }
+}
+
+/* Delete a given node from the list. */
+static void
+linked_list_delete (linked_list_t * list, ll_node * link)
+{
+    ll_node * prev;
+    ll_node * next;
+
+    prev = link->prev;
+    next = link->next;
+    
+    if (prev) {
+        if (next) {
+            /* Both the previous and next links are valid, so just
+               bypass "link" without altering "list" at all. */
+            prev->next = next;
+            next->prev = prev;
+        } else {
+            /* Only the previous link is valid, so "prev" is now the
+               last link in "list". */
+            prev->next = 0;
+            list->last = prev;
+        }
+    } else {
+        if (next) {
+            /* Only the next link is valid, not the previous one, so
+               "next" is now the first link in "list". */
+            next->prev = 0;
+            list->first = next;
+        } else {
+            /* Neither previous nor next links are valid, so the list
+               is now empty. */
+            list->first = 0;
+            list->last = 0;
+        }
+    }
+    free (link);
+}
+
+/* Traverse the list, using a callback function (i.e. visitor) */
+static void
+linked_list_traverse (linked_list_t * list, void (*callback) (void *))
+{
+    ll_node * link;
+
+    for (link = list->first; link; link = link->next) {
+        callback ((void *) link->data);
+    }
+}
+
+/* Reverse. Rather, traverse in reverse. */
+static void
+linked_list_traverse_in_reverse (linked_list_t * list,
+                                 void (*callback) (void *))
+{
+    ll_node * link;
+
+    for (link = list->last; link; link = link->prev) {
+        callback ((void *) link->data);
+    }
+}
+
+/* Tranverse and delete */
+static void
+linked_list_traverse_delete (linked_list_t * list, int (*callback) (void *))
+{
+    ll_node * link;
+
+    for (link = list->first; link; link = link->next) {
+        if (callback ((void *) link->data)) {
+            linked_list_delete (list, link);
+        }
+    }
+}
+
+/* Free the list's memory. */
+static void
+linked_list_free (linked_list_t * list)
+{
+    ll_node * link;
+    ll_node * next;
+    for (link = list->first; link; link = next) {
+        /* Store the next value so that we don't access freed
+           memory. */
+        next = link->next;
+        free (link);
+    }
+}
+
+////////////////////////////////////////////////////////////
+
 // This debug_print macro is borrowed from Jonathan Leffler, here:
 // http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
 #define debug_print(...) \
@@ -127,6 +268,8 @@ pthread_mutexattr_t mutexattr;
 pthread_mutex_t sbrk_lock;
 
 
+linked_list_t large_list;
+
 #ifdef DEBUG
 int mallocs = 0;
 int frees = 0;
@@ -221,6 +364,10 @@ int mm_init (void) {
         pagesize = mem_pagesize();
         sb_size = pagesize * SB_PAGES; 
         n_cpu = getNumProcessors();
+
+		// Zero the free list and initialize it
+		bzero(&large_list, sizeof(linked_list_t));
+		linked_list_init(&large_list);
 
         //debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
         //    who, pagesize, sb_size, n_cpu);
@@ -514,6 +661,10 @@ superblock_t* sb_get(int core, int sz) {
                     // Nothing available, make new space...
                     new_sb = 1;
                     result = (superblock_t *) mm_sbrk(sb_size);
+					// In case no space available, return NULL
+					if(result == NULL) {
+						return NULL;
+					}
                     bzero(result, sizeof(superblock_t));
                     //pthread_mutex_init(&(result->lock), NULL);
                     pthread_mutex_init(&(result->lock), &mutexattr);
@@ -680,4 +831,51 @@ freelist_t* fl_init(void *first, void *limit, size_t sz) {
 
     return (freelist_t *) first;
 
+}
+
+megablock_t *
+sb_get_large(size_t size) {
+
+	megablock_t* new_node = NULL;
+	size_t alloc_size = 0;
+
+	// Calculate the size for the new block (including node)
+	// Has to be sb_size aligned for the other stuff to work
+	alloc_size = (size_t) ALIGN_UP_TO(size + sizeof(megablock_t), sb_size);
+	
+	// Get the new memory
+	new_node = (megablock_t*) mem_sbrk(sb_size);
+
+	// If can't get more memory return NULL
+	if(!new_node)
+		return NULL;
+
+	// Zero the allocated region
+    bzero(new_node, alloc_size);
+
+	// Set the data pointer to the memory block given to the user
+	// This is not really necessary, because we don't use it.
+	// For consisency and convenience later on.
+	new_node->data = (void *) new_node + sizeof(megablock_t);
+
+	// Add the new node to the rest of the list
+	linked_list_add(&large_list, new_node);	
+
+	return new_node;
+}
+
+void
+sb_free_large(void * data) {
+	megablock_t* node;
+
+	// Get the LL node to work with
+	node = (megablock_t*) ((unsigned long) data) - sizeof(megablock_t);
+	// Disconnect the node from the data
+	node->data = NULL;
+	// Remove the node from the list
+	linked_list_delete(&large_list, node);
+
+	// Cut up the newly freed data region into superblocks
+	// and pass them up to the global heap
+	
 }
