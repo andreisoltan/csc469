@@ -186,22 +186,40 @@ name_t myname = {
 #define ALIGN_DOWN_TO(p,X) ((void *)(((unsigned long)(p) / X) * X))
 
 // Empty fraction before superblock is released
-#define SB_EMPTYFRAC ( 0.25 )
+#ifdef OPT_LOW_FRAC
+    #define SB_EMPTYFRAC ( 0.10 )
+#else
+    #define SB_EMPTYFRAC ( 0.25 )
+#endif
 
 // Size of a superblock in pages
-#define SB_PAGES 2
-//#define SB_PAGES 1
+#ifdef OPT_SMALL_SB
+    #define SB_PAGES 1
+#else
+    #define SB_PAGES 2
+#endif
 
 // Number of free superblocks before we release one
-#define SB_RELTHRESHOLD 4
+#ifdef OPT_LOW_THRESH
+    #define SB_RELTHRESHOLD 4
+#else
+    #define SB_RELTHRESHOLD 4
+#endif
 
 // Size classes
 // TODO: try bringing this down to maybe 6 classes (256), see Miser
-#define BLOCK_SZ_SM 8 // We'll use the "0 size" entry for empty superblocks
-#define BLOCK_SZ_LG 4096 
-#define NSIZES 11
-static const size_t size_classes[NSIZES] =
-    { 0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
+#define BLOCK_SZ_SM 8
+#ifdef OPT_SM_BLOCK_LIMIT
+    #define BLOCK_SZ_LG 1024
+    #define NSIZES 9
+#else
+    #define BLOCK_SZ_LG 4096
+    #define NSIZES 11
+#endif
+#define MAX_NSIZES 11
+// We'll use the "0 size" entry for empty superblocks
+static const size_t size_classes[MAX_NSIZES] = { 0, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
+
 // We make the first superpage (the one with our bookkeeping stuff on it)
 // of size class 1 arbitrarily, but with the hope that programs will use
 // allocations of that size and the space after our allocators data
