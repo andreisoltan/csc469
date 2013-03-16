@@ -71,6 +71,7 @@ static const size_t size_classes[NSIZES] =
 /* A ll_node contains one of the links of the linked list. */
 typedef struct _link {
     void * data;
+    unsigned long size;
     struct _link * prev;
     struct _link * next;
 } ll_node;
@@ -886,6 +887,7 @@ sb_get_large(size_t size) {
 	// This is not really necessary, because we don't use it.
 	// For consisency and convenience later on.
 	new_node->data = (void *) new_node + sizeof(megablock_t);
+	new_node->size = alloc_size;
 	
 	return new_node;
 }
@@ -893,6 +895,8 @@ sb_get_large(size_t size) {
 void
 sb_free_large(linked_list_t * list, void * data) {
 	megablock_t* node;
+	unsigned long i, length;
+	superblock_t *sb;
 
 	// Get the LL node to work with
 	node = (megablock_t*) ((unsigned long) data) - sizeof(megablock_t);
@@ -901,6 +905,9 @@ sb_free_large(linked_list_t * list, void * data) {
 
 	// Disconnect the node from the data
 	node->data = NULL;
+	length = node->size;
+	node->size = 0;
+
 	// Remove the node from the list
 	linked_list_delete(list, node);
 
@@ -908,6 +915,15 @@ sb_free_large(linked_list_t * list, void * data) {
 
 	// TODO: Cut up the newly freed data region into superblocks
 	// and pass them up to the global heap
+	for(i = 0; i < length; i += sb_size) {
+
+		sb = (superblock_t *) ((unsigned long) node) + i;
+
+		bzero((void*) sb, sizeof(superblock_t));
+
+		sb_insert(sb, 0);
+	}
+
 	
 }
 
