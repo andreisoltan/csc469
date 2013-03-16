@@ -3,6 +3,15 @@ export TOPDIR:=$(CURDIR)
 RESULTDIR:=$(TOPDIR)/benchmarks/results-$(shell date +%F--%X)
 LINKNAME:=$(TOPDIR)/benchmarks/results.latest
 
+program:
+	cd util && make
+	cd allocators && make
+	cd benchmarks/cache-scratch && make
+	cd benchmarks/cache-thrash && make
+	cd benchmarks/threadtest && make
+	cd benchmarks/larson && make
+	./build-variants.sh
+
 our-tests:
 	cd util && make
 	cd allocators && make ours
@@ -11,14 +20,6 @@ our-tests:
 	cd benchmarks/threadtest && make ours
 	cd benchmarks/larson && make ours
 	./benchmarks/runallours.pl $(TOPDIR)/benchmarks
-
-program:
-	cd util && make
-	cd allocators && make
-	cd benchmarks/cache-scratch && make
-	cd benchmarks/cache-thrash && make
-	cd benchmarks/threadtest && make
-	cd benchmarks/larson && make
 
 all-test: program
 	./benchmarks/runall.pl $(TOPDIR)/benchmarks

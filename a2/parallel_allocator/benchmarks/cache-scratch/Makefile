@@ -1,4 +1,3 @@
-
 INCLUDES = $(TOPDIR)/include
 LIBDIR = $(TOPDIR)/util
 LIBS = -lmmutil -lpthread
@@ -13,6 +12,9 @@ CC_DBG_FLAGS = -g -I$(INCLUDES) -L $(LIBDIR)
 all: cache-scratch-kheap cache-scratch-cmu cache-scratch-libc cache-scratch-amalloc cache-scratch-amalloc-dbg
 
 ours: cache-scratch-amalloc cache-scratch-amalloc-dbg
+
+variant: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/$(VARIANT).a
+	$(CC) $(CC_FLAGS) -o cache-scratch-$(VARIANT) cache-scratch.c $(TOPDIR)/allocators/alloclibs/$(VARIANT).a -lmmutil -lpthread
 
 # Allocator based on our Hoard-like
 

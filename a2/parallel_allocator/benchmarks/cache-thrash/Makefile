@@ -14,6 +14,9 @@ all: cache-thrash-kheap cache-thrash-cmu cache-thrash-libc cache-thrash-amalloc 
 
 ours: cache-thrash-amalloc cache-thrash-amalloc-dbg
 
+variant: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/$(VARIANT).a
+	$(CC) $(CC_FLAGS) -o cache-thrash-$(VARIANT) cache-thrash.c $(TOPDIR)/allocators/alloclibs/$(VARIANT).a -lmmutil -lpthread
+
 # Allocator based on our Hoard-like
 
 cache-thrash-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a

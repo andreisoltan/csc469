@@ -1,6 +1,7 @@
 # Test output
 results*
 */Results/
+*/variants-*
 
 # Graph output
 */*.ps
@@ -11,3 +12,7 @@ results*
 */*-kheap
 */*-amalloc
 */*-amalloc-dbg
+threadtest/threadtest-*
+larson/larson-*
+cache-scratch/cache-scratch-*
+cache-thrash/cache-thrash-*

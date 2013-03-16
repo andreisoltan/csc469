@@ -4,7 +4,7 @@ CC_FLAGS = -c -Wall -fmessage-length=0 -pipe -O3 -finline-limit=65000 -fkeep-inl
 
 CC_DBG_FLAGS = -c -Wall -fmessage-length=0 -pipe -g -finline-limit=65000 -fkeep-inline-functions -finline-functions -ffast-math -fomit-frame-pointer -DDEBUG -DNDEBUG -I. -I$(TOPDIR)/include -D_REENTRANT=1
 
-all: libkheap libcmumalloc libmmlibc libamalloc libamalloc_dbg
+all: libkheap libcmumalloc libmmlibc libamalloc libamalloc_dbg amalloc-variants
 
 ours: libmmlibc libamalloc libamalloc_dbg
 
@@ -14,9 +14,64 @@ alloclibs:
 # Library containing our first Hoard-like allocator
 libamalloc: alloclibs
 	cd a; $(CC) $(CC_FLAGS) malloc.c; ar rs ../alloclibs/libamalloc.a malloc.o
+	cp alloclibs/libamalloc.a alloclibs/libamalloc-reg.a
 
 libamalloc_dbg: alloclibs
 	cd a; $(CC) $(CC_DBG_FLAGS) malloc.c; ar rs ../alloclibs/libamalloc_dbg.a malloc.o
+
+###############################################################################
+# Variants of our allocator ###################################################
+
+amalloc-variants: libamalloc libamalloc-lowfrac libamalloc-lowthresh libamalloc-smsb libamalloc-smblock libamalloc-lowfrac-lowthresh libamalloc-lowfrac-smsb libamalloc-lowfrac-smsb libamalloc-lowfrac-smblock libamalloc-lowthresh-smsb libamalloc-lowthresh-smblock libamalloc-smsb-smblock libamalloc-lowfrac-lowthresh-smsb libamalloc-lowfrac-lowthresh-smblock libamalloc-lowthresh-smsb-smblock libamalloc-lowfrac-lowthresh-smsb-smblock
+
+## 1 ##########################################################################
+libamalloc-lowfrac: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC malloc.c; ar rs ../alloclibs/libamalloc-lowfrac.a malloc.o
+
+libamalloc-lowthresh: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_THRESH malloc.c; ar rs ../alloclibs/libamalloc-lowthresh.a malloc.o
+
+libamalloc-smsb: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_SMALL_SB malloc.c; ar rs ../alloclibs/libamalloc-smsb.a malloc.o
+
+libamalloc-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-smblock.a malloc.o
+
+## 2 ##########################################################################
+libamalloc-lowfrac-lowthresh: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_LOW_THRESH malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-lowthresh.a malloc.o
+
+libamalloc-lowfrac-smsb: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_SMALL_SB malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-smsb.a malloc.o
+
+libamalloc-lowfrac-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-smblock.a malloc.o
+
+libamalloc-lowthresh-smsb: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_THRESH -DOPT_SMALL_SB malloc.c; ar rs ../alloclibs/libamalloc-lowthresh-smsb.a malloc.o
+
+libamalloc-lowthresh-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_THRESH -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-lowthresh-smblock.a malloc.o
+
+libamalloc-smsb-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_SMALL_SB -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-smsb-smblock.a malloc.o
+
+## 3 ##########################################################################
+libamalloc-lowfrac-lowthresh-smsb: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_LOW_THRESH -DOPT_SMALL_SB malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-lowthresh-smsb.a malloc.o
+
+libamalloc-lowfrac-lowthresh-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_LOW_THRESH -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-lowthresh-smblock.a malloc.o
+
+libamalloc-lowthresh-smsb-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_THRESH -DOPT_SMALL_SB -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-lowthresh-smsb-smblock.a malloc.o
+
+## 4 ##########################################################################
+libamalloc-lowfrac-lowthresh-smsb-smblock: alloclibs
+	cd a; $(CC) $(CC_FLAGS) -DOPT_LOW_FRAC -DOPT_LOW_THRESH -DOPT_SMALL_SB -DOPT_SMALL_BLOCK_LIMIT malloc.c; ar rs ../alloclibs/libamalloc-lowfrac-lowthresh-smsb-smblock.a malloc.o
+
+## End of variants ############################################################
+
 
 # Library containing mm_malloc and mm_free for OS/161 kheap-based allocator
 

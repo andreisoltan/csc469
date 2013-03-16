@@ -14,6 +14,9 @@ all: larson-kheap larson-cmu larson-libc larson-amalloc larson-amalloc-dbg
 
 ours: larson-amalloc larson-amalloc-dbg
 
+variant: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/$(VARIANT).a
+	$(CC) $(CC_FLAGS) -o larson-$(VARIANT) larson.c $(TOPDIR)/allocators/alloclibs/$(VARIANT).a -lmmutil -lpthread
+
 # Allocator based on our Hoard-like
 
 larson-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a

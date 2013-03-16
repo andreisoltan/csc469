@@ -14,6 +14,9 @@ all: threadtest-kheap threadtest-cmu threadtest-libc threadtest-amalloc threadte
 
 ours: threadtest-amalloc threadtest-amalloc-dbg
 
+variant: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/$(VARIANT).a
+	$(CC) $(CC_FLAGS) -o threadtest-$(VARIANT) threadtest.c $(TOPDIR)/allocators/alloclibs/$(VARIANT).a -lmmutil -lpthread
+    
 # Our first Hoard-like
 threadtest-amalloc: $(DEPENDS) $(TOPDIR)/allocators/alloclibs/libamalloc.a
 	$(CC) $(CC_FLAGS) -o $(@) threadtest.c $(TOPDIR)/allocators/alloclibs/libamalloc.a -lmmutil -lpthread
