@@ -39,6 +39,15 @@ This is a sort of related works, in a way.
 
 Describe the structure of the report. (i.e. section 1 - intro, etc.)
 
+The goal of this assignment is to implement a multithreaded memory allocator.
+The challenge is to achieve an implementation that is as fast as a regular 
+malloc, and whose performance scales linearly with the increased number of
+threads, while at the same time avoiding false sharing and having low 
+memory fragmentation. For the approach and the design of the allocator, 
+We use as point of reference the "Hoard: A Scalable Memory Allocator for 
+Multithreaded Applications" paper by Berger et al. In addition, we use 
+<insert Miser paper>
+
 \newpage
 \section{Allocator Design}
 
@@ -48,7 +57,7 @@ What metadata do we maintain? Why do we need it?
 \begin{itemize}
 	\item for the allocator
 	\item for the heap(s)
-	\item for he superblock(s)
+	\item for the superblock(s)
 	\item for the blocks inside the superblock
 \end{itemize}
 
@@ -111,14 +120,23 @@ fragmentation. Pay significant attention to \textbf{fragmentation} and
 Insert smart text about how we did awesome... This might take work. :)
 
 \newpage
-\appendix
-\section{References}
 
-Cite the paper that we use, and any other resources. There is most likely another, better way to cite research stuff in \LaTeX{}.
+% Declare the bibligraphy to use one-digit indexes.
+\begin{thebibliography}{9}
+	
+	\bibitem{berger00}
+		Berger, Emery D., et al.
+		"Hoard: A scalable memory allocator for multithreaded applications."
+		\textit{ACM SIGPLAN Notices} 35.11 
+		(2000): 
+		117-128.
+	\bibitem{miser-intel}
+		Lewin, Stephen.
+		"Miser - A Dynamically Loadable Memory Allocator for Multi-Threaded Applications."
+		\textit{Intel Developer Zone.}
+		Intel, 
+		n.d. Web. 10 Mar. 2013.
 
-\section{Tools}
-
-Do we need this? Do we have something to write for this? (e.g scripts, programs, other tools, etc.)
-
+\end{thebibliography}
 
 \end{document}
