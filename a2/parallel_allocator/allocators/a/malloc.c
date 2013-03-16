@@ -223,6 +223,7 @@ struct superblock_s {
     size_t size_class;
     superblock_t *prev;
     superblock_t *next;
+    superblock_t **group;
     freelist_t *free;
 };
 
@@ -258,6 +259,7 @@ typedef struct heap_s {
 superblock_t* sb_find_free(sizeclass_t *class);
 superblock_t* _sb_find_free(superblock_t **sb);
 superblock_t* sb_get(int core, int sz);
+superblock_t* sb_find_victim(int heap);
 freelist_t* fl_init(void *first, void *limit, size_t sz);
 void sb_insert(superblock_t *sb, int heap);
 void *mm_sbrk (ptrdiff_t increment);
@@ -300,6 +302,7 @@ void dbg_print_heap_info(const char *who) {
     }
 }
 
+/*
 void dbg_print_heap_details(int heap_num) {
     int i = 0;
     //freelist_t *fl = NULL;
@@ -324,6 +327,7 @@ void dbg_print_heap_details(int heap_num) {
     }
 
 }
+*/
 #endif
 // end debug functions ////////////////////////////////////////////////
  
@@ -409,7 +413,7 @@ int mm_init (void) {
             // Initialize locks on all heaps
             heap = HEAPS;
             for (i = 0; i < n_cpu+1; i++, heap++) {
-                //debug_print("%20s|HEAPS[%d] @ %p\n", __func__, i, heap);
+                debug_print("%20s|&HEAPS[%d].usage = %p\n", __func__, i, &(heap->usage));
                 pthread_mutex_init(&(heap->lock), &mutexattr);
             }
 
@@ -467,8 +471,12 @@ void sb_insert(superblock_t *sb, int heap) {
         } else {
             frac = (1.0 * sb->usage) / sb_size;
             if (frac > SB_EMPTYFRAC) {
+                //debug_print("%20s|sb@%p -> heap%d fullish (frac%f)\n",
+                //    __func__, sb, heap, frac);
                 group = &(HEAPS[heap].sizes[sb->size_class].fullish);
             } else {
+                //debug_print("%20s|sb@%p -> heap%d emptyish (frac%f)\n",
+                //    __func__, sb, heap, frac);
                 group = &(HEAPS[heap].sizes[sb->size_class].emptyish);
             }
         }
@@ -478,6 +486,7 @@ void sb_insert(superblock_t *sb, int heap) {
             (*group)->prev = sb;
         sb->prev = NULL;
         sb->next = *group;
+        sb->group = group;
         *group = sb;
     
 #ifdef DEBUG
@@ -485,7 +494,7 @@ void sb_insert(superblock_t *sb, int heap) {
         fl = sb->free;
         while ((fl) && steps > 0) {
             steps--;
-            if ((fl < dseg_lo) || (fl > dseg_hi)) {
+            if (((char*)fl < dseg_lo) || ((char*)fl > dseg_hi)) {
                 debug_print("%20s|wtf? fl entry out of bounds: %p\n",
                     __func__, fl);
             }
@@ -530,8 +539,8 @@ void *mm_malloc (size_t size) {
         exit(1);
     }
 
-    debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
-        __func__, sb, sb->heap, sb->usage, sb->size_class);
+    //debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
+    //    __func__, sb, sb->heap, sb->usage, sb->size_class);
 
     // Take block from freelist
     ret = sb->free;
@@ -553,7 +562,9 @@ void *mm_malloc (size_t size) {
 // freed behaviour is undefined. 
 void mm_free (void *ptr) {
 
-    superblock_t *sb = NULL;
+    superblock_t *sb = NULL, *prev = NULL, *next = NULL;
+    superblock_t *victim = NULL;
+    int heap = -1;
 #ifdef DEBUG
     frees++;
 #endif
@@ -576,7 +587,31 @@ void mm_free (void *ptr) {
     //debug_print("%20s|lock sb@%p\n", __func__, sb);
     pthread_mutex_lock(&(sb->lock)); 
 
-    debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
+    // Save the heap number that we're freeing from
+    heap = sb->heap;
+
+    // Take the superblock out of the list and re-insert it
+    // This brings it to the front of the list, hopefully re-using it while it
+    // is still in cache and gives us a chance to re-file it in an appropriate
+    // fullness group.
+    prev = sb->prev; sb->prev = NULL;
+    next = sb->next; sb->next = NULL;
+
+    if (prev == NULL) {
+        // We were the head of the list...
+        *(sb->group) = sb->next;
+        if (*(sb->group))
+            (*(sb->group))->prev = NULL;
+    } else {
+        prev->next = next;
+        if (next)
+            next->prev = prev;
+    }
+
+    sb_insert(sb, heap);
+
+    //debug_print("%20s|entry|heap%d|sb@%p/sz%d|usage%d\n",
+    //    __func__, heap, sb, size_classes[sb->size_class], HEAPS[heap].usage);
 
     // Insert the freed block at the head of the list (LIFO)
     //debug_print("%20s|%p->free = %p->next = %p\n",
@@ -584,40 +619,121 @@ void mm_free (void *ptr) {
     ((freelist_t*)ptr)->next = sb->free;
     sb->free = (freelist_t*)ptr;
 #ifdef DEBUG
-    if ((sb->free < dseg_lo) || (sb->free > dseg_hi))
+    if (((char*)(sb->free) < dseg_lo) || ((char*)(sb->free) > dseg_hi))
         debug_print("%20s|wtf?", __func__);
 #endif
 
     // Adjust statistics
     sb->usage -= size_classes[sb->size_class];
-    HEAPS[sb->heap].usage -= size_classes[sb->size_class];
+    HEAPS[heap].usage -= size_classes[sb->size_class];
 
-    // TODO: rebalance if we've crossed the mptiness threshold
-
-    if ((HEAPS[sb->heap].allocated - HEAPS[sb->heap].usage)
+    // Done with this superblock, unlock it
+    //debug_print("%20s|unlock sb%p\n", __func__, sb);
+    pthread_mutex_unlock(&(sb->lock)); 
+   
+    //if (HEAPS[heap].usage < 0)
+    //    debug_print("%20s|heap%d.usage < 0: %d\n",
+    //        __func__, heap, HEAPS[heap].usage);
+    
+    // Evict a superblock up to the glboal heap if we've crossed the 
+    // emptiness threshold...
+    if ((HEAPS[heap].allocated - HEAPS[heap].usage)
         > (SB_RELTHRESHOLD * sb_size)) {
         //debug_print("%20s|heap%d|alloc-usage:%d > %d:REL_THRESH*sb_sz\n",
-        //    "mm_free",
+        //    __func__,
         //    sb->heap, (HEAPS[sb->heap].allocated - HEAPS[sb->heap].usage),
         //    (SB_RELTHRESHOLD * sb_size));
         
-        if (HEAPS[sb->heap].usage <
-            ((1.0 - SB_EMPTYFRAC) * HEAPS[sb->heap].allocated)) {
+        if (HEAPS[heap].usage <
+            ((1.0 - SB_EMPTYFRAC) * HEAPS[heap].allocated)) {
             //debug_print("%20s| %d < ((1.0 - %f) * %d)) -- should release!\n",
-            //    "mm_free",
-            //    HEAPS[sb->heap].usage, SB_EMPTYFRAC,
-            //    HEAPS[sb->heap].allocated);
-            
-            // Choose an emptyish superblock
-            // move to global
-            // adjust stats
+            //    __func__,
+            //    HEAPS[heap].usage, SB_EMPTYFRAC,
+            //    HEAPS[heap].allocated);
+
+            // Choose a victim -- VICTIM IS RETURNED ALREADY LOCKED
+            victim = sb_find_victim(heap);
+
+            // Lock global heap
+            pthread_mutex_lock(&(HEAPS[0].lock));
+
+            // Adjust stats
+            HEAPS[0].usage += victim->usage;
+            HEAPS[victim->heap].usage -= victim->usage;
+            HEAPS[0].allocated += sb_size;
+            HEAPS[victim->heap].allocated -= sb_size;
+
+            // Insert into global heap
+            sb_insert(victim, 0);
+
+            // Don't forget to unlock the victim
+            pthread_mutex_unlock(&(victim->lock));
+
+            // Unlock global heap
+            pthread_mutex_unlock(&(HEAPS[0].lock));
+
         }
     }
     
-    //debug_print("%20s|unlock sb%p\n", __func__, sb);
-    pthread_mutex_unlock(&(sb->lock)); 
+    //debug_print("%20s|exit |heap%d|sb@%p/sz%d|usage%d\n\n",
+    //    __func__, heap, sb, size_classes[sb->size_class], HEAPS[heap].usage);
+
+    // Done with the heap
     //debug_print("%20s|unlock heap%d\n", __func__, sb->heap);
-    pthread_mutex_unlock(&(HEAPS[sb->heap].lock));
+    pthread_mutex_unlock(&(HEAPS[heap].lock));
+}
+
+// Looks for an emptyish superblock in the given heap which we can send back
+// to the global heap. Upon return from sb_find_victim, the superblock will be
+// locked and will have been removed from the heap. We will not update the
+// statistics
+//
+// WE ASSUME THAT THE CALLER ALREADY HAS LOCKED THE HEAP
+superblock_t* sb_find_victim(int heap) {
+
+    superblock_t **list = NULL;
+    superblock_t *victim = NULL;
+    int i = 0;
+
+    // Find and remove a superblock from size class 0 -- the completely
+    // empty superblocks or from one of the emptyish lists of the other
+    // size classes...
+    for (i = 0; i < NSIZES; i++) {
+        list = &(HEAPS[heap].sizes[i].emptyish);
+        victim = *list;
+        if (victim)
+            break;
+    }
+
+    // If nothing found yet, look at the fullish lists of each size class
+    // (not sure if we'll ever hit this, come to think about it)...
+    if (!victim) {
+        //debug_print("%20s|looking in fullish lists...\n", __func__);
+        for (i = 1; i < NSIZES; i++) {
+            list = &(HEAPS[heap].sizes[i].fullish);
+            victim = *list;
+            if (victim)
+                break;
+        }
+    }
+
+    if (!victim) {
+        debug_print("%20s|something weird is going on...\n", __func__);
+    } else {
+        // Lock the victim
+        pthread_mutex_lock(&(victim->lock));
+
+        // Remove the victim from its heap -- we are taking from the head
+        // of the list, so we've saved that address in order to update it.
+        *list = victim->next;
+        if (*list)
+            (*list)->prev = NULL;
+        victim->next = NULL;
+    }
+
+    //debug_print("%20s|victim.usage=%d\n", __func__, victim->usage);
+    
+    return victim;
 }
 
 // Wraps, serializes calls to mem_sbrk()
@@ -644,96 +760,54 @@ void *mm_sbrk (ptrdiff_t increment) {
 // WHEN YOU'RE DONE
 superblock_t* sb_get(int core, int sz) {
 
-    char from_global = 0;   // moving superblock from global heap 
-    char new_sb = 0;        // newly allocated superblock
-    char new_or_empty = 0;  // need to build superblock's freelist
     superblock_t *result = NULL;
-    
-    if ((result = sb_find_free(&(HEAPS[core+1].sizes[sz]))) == NULL) {
-        if ((result = sb_find_free(&(HEAPS[core+1].sizes[0]))) == NULL) {
-            // We didn't find anything suitable on our own heap, will get
-            // from the global, or a new one. In either of those cases
-            // Lock the global heap before going up there to look...
-            //debug_print("%20s|lock heap0\n", __func__);
-            pthread_mutex_lock(&(HEAPS[0].lock));
-            if ((result = sb_find_free(&(HEAPS[0].sizes[sz]))) == NULL) {
-                if ((result = sb_find_free(&(HEAPS[0].sizes[0]))) == NULL) {
-                    // Nothing available, make new space...
-                    new_sb = 1;
-                    result = (superblock_t *) mm_sbrk(sb_size);
-					// In case no space available, return NULL
-					if(result == NULL) {
-						return NULL;
-					}
-                    bzero(result, sizeof(superblock_t));
-                    //pthread_mutex_init(&(result->lock), NULL);
-                    pthread_mutex_init(&(result->lock), &mutexattr);
-                } else {
-                    from_global = 1;
-                }
-                // Found an empty SB in the global heap or we mem_sbrk'ed a
-                // new SB, we'll need to initialize its freelist.
-                new_or_empty = 1;
-            } else {
-                // Found a non-empty SB in global
-                from_global = 1;
-            }
-            // Done with the global heap
-            //debug_print("%20s|unlock heap0\n", __func__);
-            pthread_mutex_unlock(&(HEAPS[0].lock));
-        } else {
-            // Found an empty SB in this core's heap, must init its freelist
-            new_or_empty = 1;
-        }
+
+#define _DEC_GLOBAL_HEAP HEAPS[0].allocated -= sb_size; \
+    HEAPS[0].usage -= result->usage;
+#define _INC_CPU_HEAP HEAPS[core+1].allocated += sb_size;
+#define _SET_HEAP result->heap = core+1;
+#define _SET_SZ_CLASS result->size_class = sz;
+#define _DO_FREELIST result->free = fl_init(ALIGN_UP_TO((((unsigned long)result)\
+    + sizeof(superblock_t)), size_classes[sz]),\
+    (void*) (((unsigned long)result) + sb_size), size_classes[sz]);
+
+    if ((result = sb_find_free(&(HEAPS[core+1].sizes[sz])))) {
+        // Found one on our heap of the correct size class, cool!
+    } else if ((result = sb_find_free(&(HEAPS[core+1].sizes[0])))) {
+        // Found one on our heap that was empty
+        _DO_FREELIST; _SET_SZ_CLASS;
     } else {
-        // We found a non-empty SB in this core's heap
+        // Check in the global heap...
+        pthread_mutex_lock(&(HEAPS[0].lock));
+        if ((result = sb_find_free(&(HEAPS[0].sizes[sz])))) {
+            // Found a global SB of the correct size class
+            _SET_HEAP; _DEC_GLOBAL_HEAP; _INC_CPU_HEAP;
+        } else if ((result = sb_find_free(&(HEAPS[0].sizes[0])))) {
+            // Found an empty global SB, need to set up the free list
+            // and size class
+            _DO_FREELIST; _SET_SZ_CLASS; _SET_HEAP;
+            _DEC_GLOBAL_HEAP; _INC_CPU_HEAP;
+        } else if ((result = (superblock_t *) mm_sbrk(sb_size))) {
+            // Made a new one, need to set up the free list, lock
+            // and size class
+            bzero(result, sizeof(superblock_t));
+            pthread_mutex_init(&(result->lock), &mutexattr);
+            _DO_FREELIST; _SET_SZ_CLASS; _SET_HEAP;
+        } else {
+            // mm_sbrk failed...
+            return NULL;
+        }
+        pthread_mutex_unlock(&(HEAPS[0].lock));
     }
 
-    //debug_print("%20s|lock sb@%p\n", __func__, result);
     pthread_mutex_lock(&(result->lock));
-
-    //debug_print("%20s|HEAPS[%d].sbs[%d]=%p <-- %p\n",
-    //    "sb_get", core+1, sz, HEAPS[core+1].sbs[sz], result);
-
-    // Adjust core's heap stats if necessary
-    if (new_sb) {
-        //debug_print("%20s|new_sb\n", "sb_get");
-        result->heap = core + 1;
-        HEAPS[core+1].allocated += sb_size;
-        //new_or_empty = 1; // redundant
-    }
 
     // Increment usage counters
     result->usage += size_classes[sz];
     HEAPS[core+1].usage += size_classes[sz];
 
-    // Adjust global/core stats if necessary
-    if (from_global) {
-        //debug_print("%20s|from_global\n", "sb_get");
-        result->heap = core + 1;
-        HEAPS[0].allocated -= sb_size;
-        HEAPS[0].usage -= result->usage;
-        HEAPS[core+1].allocated += sb_size;
-    //    HEAPS[core+1].usage += result->usage;
-    }
-
-    // If we found a new or empty SB, init its freelist, assign size class
-    if (new_or_empty) {
-        //debug_print("%20s|new_or_empty\n", "sb_get");
-        result->free = fl_init(
-            ALIGN_UP_TO((((unsigned long)result) + sizeof(superblock_t)), size_classes[sz]),
-            (void*) (((unsigned long)result) + sb_size),
-            size_classes[sz]);
-        result->size_class = sz;
-    }
-    
     // Put the SB at the head of the list for this cpu/size-class
     sb_insert(result, core+1);
-
-    //debug_print("%20s|sb@%p (heap %d, usage %d, sz %d)\n",
-    //    "sb_get", result, result->heap, result->usage, result->size_class);
-    debug_print("%20s|sb@%p|from_global %d|new_or_empty %d|new_sb %d\n",
-        __func__, result, from_global, new_or_empty, new_sb);
 
     // Now we are guaranteed to have a superblock with free space pointed
     // at by result.
