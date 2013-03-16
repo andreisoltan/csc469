@@ -23,146 +23,6 @@
 #define DEBUG 0
 #endif
 
-////////////////////////////////////////////////////////////
-
-/* A ll_node contains one of the links of the linked list. */
-typedef struct _link {
-    const void * data;
-    struct _link * prev;
-    struct _link * next;
-} ll_node;
-
-typedef struct _link megablock_t;
-
-/* linked_list_t contains a linked list. */
-typedef struct linked_list
-{
-    ll_node * first;
-    ll_node * last;
-}
-linked_list_t;
-
-/* The following function initializes the linked list by putting zeros
-   into the pointers containing the first and last links of the linked
-   list. */
-
-static void
-linked_list_init (linked_list_t * list)
-{
-    list->first = list->last = 0;
-}
-
-/* The following function adds a new link to the end of the linked
-   list. The node has to be preallocated and have the data set. */
-static void
-linked_list_add (linked_list_t * list, ll_node * link)
-{
-
-    if (! link) {
-        fprintf (stderr, "can't insert invalid node.\n");
-        exit (EXIT_FAILURE);
-    }
-
-    if (list->last) {
-        /* Join the two final links together. */
-        list->last->next = link;
-        link->prev = list->last;
-        list->last = link;
-    } else {
-        list->first = link;
-        list->last = link;
-    }
-}
-
-/* Delete a given node from the list. */
-static void
-linked_list_delete (linked_list_t * list, ll_node * link)
-{
-    ll_node * prev;
-    ll_node * next;
-
-    prev = link->prev;
-    next = link->next;
-    
-    if (prev) {
-        if (next) {
-            /* Both the previous and next links are valid, so just
-               bypass "link" without altering "list" at all. */
-            prev->next = next;
-            next->prev = prev;
-        } else {
-            /* Only the previous link is valid, so "prev" is now the
-               last link in "list". */
-            prev->next = 0;
-            list->last = prev;
-        }
-    } else {
-        if (next) {
-            /* Only the next link is valid, not the previous one, so
-               "next" is now the first link in "list". */
-            next->prev = 0;
-            list->first = next;
-        } else {
-            /* Neither previous nor next links are valid, so the list
-               is now empty. */
-            list->first = 0;
-            list->last = 0;
-        }
-    }
-    free (link);
-}
-
-/* Traverse the list, using a callback function (i.e. visitor) */
-static void
-linked_list_traverse (linked_list_t * list, void (*callback) (void *))
-{
-    ll_node * link;
-
-    for (link = list->first; link; link = link->next) {
-        callback ((void *) link->data);
-    }
-}
-
-/* Reverse. Rather, traverse in reverse. */
-static void
-linked_list_traverse_in_reverse (linked_list_t * list,
-                                 void (*callback) (void *))
-{
-    ll_node * link;
-
-    for (link = list->last; link; link = link->prev) {
-        callback ((void *) link->data);
-    }
-}
-
-/* Tranverse and delete */
-static void
-linked_list_traverse_delete (linked_list_t * list, int (*callback) (void *))
-{
-    ll_node * link;
-
-    for (link = list->first; link; link = link->next) {
-        if (callback ((void *) link->data)) {
-            linked_list_delete (list, link);
-        }
-    }
-}
-
-/* Free the list's memory. */
-static void
-linked_list_free (linked_list_t * list)
-{
-    ll_node * link;
-    ll_node * next;
-    for (link = list->first; link; link = next) {
-        /* Store the next value so that we don't access freed
-           memory. */
-        next = link->next;
-        free (link);
-    }
-}
-
-////////////////////////////////////////////////////////////
 
 // This debug_print macro is borrowed from Jonathan Leffler, here:
 // http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
@@ -207,6 +67,23 @@ static const size_t size_classes[NSIZES] =
 // allocations of that size and the space after our allocators data
 // structures will not be wasted.
 #define FIRST_SB_CLASS 1
+
+/* A ll_node contains one of the links of the linked list. */
+typedef struct _link {
+    void * data;
+    struct _link * prev;
+    struct _link * next;
+} ll_node;
+
+typedef struct _link megablock_t;
+
+/* linked_list_t contains a linked list. */
+typedef struct linked_list
+{
+    ll_node * first;
+    ll_node * last;
+}
+linked_list_t;
 
 // Each superblock tracks a free list (LIFO) of available blocks
 typedef struct freelist_s freelist_t;
@@ -254,21 +131,32 @@ typedef struct heap_s {
 
 #define HEAPS ((heap_t*)(sizeof(superblock_t)+dseg_lo))
 
-
+// Forward function declarations
 superblock_t* sb_find_free(sizeclass_t *class);
 superblock_t* _sb_find_free(superblock_t **sb);
 superblock_t* sb_get(int core, int sz);
 freelist_t* fl_init(void *first, void *limit, size_t sz);
 void sb_insert(superblock_t *sb, int heap);
 void *mm_sbrk (ptrdiff_t increment);
+megablock_t * sb_get_large(size_t size);
+void sb_free_large(linked_list_t * list, void * data);
+
+// Linked list functions forward declarations
+void linked_list_init (linked_list_t * list);
+void linked_list_add (linked_list_t * list, ll_node * link);
+void linked_list_delete (linked_list_t * list, ll_node * link);
+void linked_list_traverse (linked_list_t * list, void (*callback) (void *));
+megablock_t * linked_list_find (linked_list_t * list, void *data);
+void linked_list_traverse_delete (linked_list_t * list, void * data);
+
 
 size_t pagesize = 0;
 size_t sb_size = 0;
 pthread_mutexattr_t mutexattr;
 pthread_mutex_t sbrk_lock;
 
-
 linked_list_t large_list;
+pthread_mutex_t large_list_lock;
 
 #ifdef DEBUG
 int mallocs = 0;
@@ -303,7 +191,7 @@ void dbg_print_heap_info(const char *who) {
 void dbg_print_heap_details(int heap_num) {
     int i = 0;
     //freelist_t *fl = NULL;
-    superblock_t *sb = &(HEAPS[heap_num]);
+    superblock_t *sb = (superblock_t *) &(HEAPS[heap_num]);
 
     debug_print("heap %d (usage %d)\n\n"
         "%15s %15s %15s %15s\n",
@@ -365,9 +253,11 @@ int mm_init (void) {
         sb_size = pagesize * SB_PAGES; 
         n_cpu = getNumProcessors();
 
-		// Zero the free list and initialize it
-		bzero(&large_list, sizeof(linked_list_t));
+		// Initialize the large list
 		linked_list_init(&large_list);
+		pthread_mutex_init(&large_list_lock, &mutexattr);
+
+        debug_print("%20s|##### Initialized large_list\n", __func__);
 
         //debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
         //    who, pagesize, sb_size, n_cpu);
@@ -406,11 +296,12 @@ int mm_init (void) {
             // Zero the heap structures
             bzero(base, alloc_size);
 
-            // Initialize locks on all heaps
+            // Initialize locks and large lists on all heaps
             heap = HEAPS;
             for (i = 0; i < n_cpu+1; i++, heap++) {
                 //debug_print("%20s|HEAPS[%d] @ %p\n", __func__, i, heap);
                 pthread_mutex_init(&(heap->lock), &mutexattr);
+
             }
 
             // Set up this superblock's header
@@ -502,47 +393,80 @@ void *mm_malloc (size_t size) {
     void *ret = NULL;
     superblock_t *sb = NULL;
 
+
     // Find our CPU, size class of request
     int cpu = sched_getcpu();
     int class = 0;
+
 
 #ifdef DEBUG
     mallocs++;
 #endif
 
+
     while ((size_classes[class] < size) && (class < NSIZES))
         class++;
 
-    // TODO: large allocations
+
+    // Handle large allocations
     if (class == NSIZES) {
-        // Larger than we track in our size classes
-        fprintf(stderr, "TODO: large allocations\n");
-        exit(1);
-    }
+        // The requestes size is larger than we track in our size classes
 
-    //debug_print("%20s|lock heap%d\n", __func__, cpu+1);
-    pthread_mutex_lock(&(HEAPS[cpu+1].lock));
+        // Get the large block
+        megablock_t* large_block = sb_get_large(size);
 
-    // Found our size class (size_classes[class] >= size), get an
-    // appropriate superblock WHICH WILL BE LOCKED.
-    if ((sb = sb_get(cpu, class)) == NULL) {
-        fprintf(stderr, "Could not malloc %d bytes. Whoops.\n", size);
-        exit(1);
-    }
+		// Handle allocation errors (out of memory)
+		if(large_block == NULL) {
+        	fprintf(stderr, "Could not malloc %d bytes. Whoops.\n", size);
+	        exit(1);
+		}
 
-    debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
-        __func__, sb, sb->heap, sb->usage, sb->size_class);
+        debug_print("%20s|Getting large block @ %p\n", __func__, large_block);
 
-    // Take block from freelist
-    ret = sb->free;
-    sb->free = sb->free->next;
+		pthread_mutex_lock(&large_list_lock);
 
-    // Unlock and return
-    //debug_print("%20s|unlock sb%p\n", __func__, sb);
-    pthread_mutex_unlock(&(sb->lock));
-    //debug_print("%20s|unlock heap%d\n", __func__, cpu+1);
-    pthread_mutex_unlock(&(HEAPS[cpu+1].lock));
-    
+		// Add the new node to the rest of the list for this heap
+		linked_list_add(&large_list, large_block);
+
+		pthread_mutex_unlock(&large_list_lock);
+		
+		ret = large_block->data;
+
+
+        debug_print("%20s|##### Added a block in  large_list @%p\n",
+        		__func__, large_block);
+
+    } else {
+
+		//debug_print("%20s|lock heap%d\n", __func__, cpu+1);
+		// Lock the heap since we will be modifying it
+		pthread_mutex_lock(&(HEAPS[cpu+1].lock));
+
+		// Found our size class (size_classes[class] >= size), get an
+		// appropriate superblock WHICH WILL BE LOCKED.
+		if ((sb = sb_get(cpu, class)) == NULL) {
+			fprintf(stderr, "Could not malloc %d bytes. Whoops.\n", size);
+			exit(1);
+		}
+
+
+		debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
+			__func__, sb, sb->heap, sb->usage, sb->size_class);
+
+		// Take block from freelist
+		ret = sb->free;
+		sb->free = sb->free->next;
+
+		// Unlock the superblock
+		//debug_print("%20s|unlock sb%p\n", __func__, sb);
+		pthread_mutex_unlock(&(sb->lock));
+
+		// Unlock the heap and return
+		//debug_print("%20s|unlock heap%d\n", __func__, cpu+1);
+		pthread_mutex_unlock(&(HEAPS[cpu+1].lock));
+
+	}
+
 //    debug_print("%20s|%p\n", "mm_malloc", ret);
     //dbg_print_heap_info(who);
     return ret; 
@@ -554,15 +478,39 @@ void *mm_malloc (size_t size) {
 void mm_free (void *ptr) {
 
     superblock_t *sb = NULL;
+    megablock_t *mega = NULL;
+
 #ifdef DEBUG
     frees++;
 #endif
+
     // Make sure the pointer is from memory that we allocated
     if ( ((char*)ptr < dseg_lo) || ((char *)ptr > dseg_hi) )
         return;
-    
-    // TODO: If this is a large allocation deal with it separately...
 
+	pthread_mutex_lock(&large_list_lock);
+       
+    // TODO: If this is a large allocation deal with it separately...
+    mega = linked_list_find (&large_list, ptr);
+
+	if(mega != NULL) {
+
+		debug_print("%20s|Freeing large block @ %p\n", __func__, mega);
+
+   	    // TODO: Replace this with a call to sb_free_large
+   	    // TODO: After replace, remove locking inside sb_free_large
+   	    linked_list_delete(&large_list, mega);
+
+		pthread_mutex_unlock(&large_list_lock);
+
+        debug_print("%20s|##### Removed a block from  large_list @%p\n",
+        		__func__, mega);
+
+   	    return;
+    }
+
+	pthread_mutex_unlock(&large_list_lock);
+	
     // General case:
     // Find nearest superblock alignment below *ptr
     //sb = ALIGN_DOWN_TO(ptr, sb_size);
@@ -571,8 +519,10 @@ void mm_free (void *ptr) {
         ( (char*) ALIGN_DOWN_TO(((char*)ptr - dseg_lo), sb_size) )
         + (unsigned long) dseg_lo );
 
+	// Lock the heap since we will be modifying it
     //debug_print("%20s|lock heap%d\n", __func__, sb->heap);
     pthread_mutex_lock(&(HEAPS[sb->heap].lock)); 
+
     //debug_print("%20s|lock sb@%p\n", __func__, sb);
     pthread_mutex_lock(&(sb->lock)); 
 
@@ -857,25 +807,138 @@ sb_get_large(size_t size) {
 	// This is not really necessary, because we don't use it.
 	// For consisency and convenience later on.
 	new_node->data = (void *) new_node + sizeof(megablock_t);
-
-	// Add the new node to the rest of the list
-	linked_list_add(&large_list, new_node);	
-
+	
 	return new_node;
 }
 
 void
-sb_free_large(void * data) {
+sb_free_large(linked_list_t * list, void * data) {
 	megablock_t* node;
 
 	// Get the LL node to work with
 	node = (megablock_t*) ((unsigned long) data) - sizeof(megablock_t);
+
+	pthread_mutex_lock(&large_list_lock);
+
 	// Disconnect the node from the data
 	node->data = NULL;
 	// Remove the node from the list
-	linked_list_delete(&large_list, node);
+	linked_list_delete(list, node);
 
-	// Cut up the newly freed data region into superblocks
+	pthread_mutex_unlock(&large_list_lock);
+
+	// TODO: Cut up the newly freed data region into superblocks
 	// and pass them up to the global heap
 	
 }
+
+
+////////////////////////////////////////////////////////////
+
+/* The following function initializes the linked list by putting zeros
+   into the pointers containing the first and last links of the linked
+   list. */
+
+void
+linked_list_init (linked_list_t * list)
+{
+    list->first = list->last = 0;
+}
+
+/* The following function adds a new link to the end of the linked
+   list. The node has to be preallocated and have the data set. */
+void
+linked_list_add (linked_list_t * list, ll_node * link)
+{
+
+    if (! link) {
+        fprintf (stderr, "can't insert invalid node.\n");
+        exit (EXIT_FAILURE);
+    }
+
+    if (list->last) {
+        /* Join the two final links together. */
+        list->last->next = link;
+        link->prev = list->last;
+        list->last = link;
+    } else {
+        list->first = link;
+        list->last = link;
+    }
+}
+
+/* Delete a given node from the list. */
+void
+linked_list_delete (linked_list_t * list, ll_node * link)
+{
+    ll_node * prev;
+    ll_node * next;
+
+    prev = link->prev;
+    next = link->next;
+    
+    if (prev) {
+        if (next) {
+            /* Both the previous and next links are valid, so just
+               bypass "link" without altering "list" at all. */
+            prev->next = next;
+            next->prev = prev;
+        } else {
+            /* Only the previous link is valid, so "prev" is now the
+               last link in "list". */
+            prev->next = 0;
+            list->last = prev;
+        }
+    } else {
+        if (next) {
+            /* Only the next link is valid, not the previous one, so
+               "next" is now the first link in "list". */
+            next->prev = 0;
+            list->first = next;
+        } else {
+            /* Neither previous nor next links are valid, so the list
+               is now empty. */
+            list->first = 0;
+            list->last = 0;
+        }
+    }
+    free (link);
+}
+
+/* Traverse the list, using a callback function (i.e. visitor) */
+void
+linked_list_traverse (linked_list_t * list, void (*callback) (void *))
+{
+    ll_node * link;
+
+    for (link = list->first; link; link = link->next) {
+        callback ((void *) link->data);
+    }
+}
+
+/* Find an element in the list, given the data pointer. */
+megablock_t *
+linked_list_find (linked_list_t * list, void *data)
+{
+    ll_node * link;
+
+    for (link = list->first; link; link = link->next) {
+    	if(link->data == data)
+    		return link;
+    }
+
+    return NULL;
+}
+ 
+void
+linked_list_traverse_delete (linked_list_t * list, void * data)
+{
+	ll_node * link;
+
+	for (link = list->first; link; link = link->next) {
+		if (link->data == data) 
+	    	linked_list_delete (list, link);
+	}
+}
+////////////////////////////////////////////////////////////
+

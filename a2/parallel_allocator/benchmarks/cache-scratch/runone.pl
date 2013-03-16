@@ -27,7 +27,7 @@ my $cmd1 = "echo \"\" > $dir/Results/$name/cache-scratch-$i";
 system "$cmd1";
 for (my $j = 1; $j <= $iterations; $j++) {
     print "Iteration $j\n";
-    my $cmd = "$dir/cache-scratch-$name $i 1000 8 100000 >> $dir/Results/$name/cache-scratch-$i";
+    my $cmd = "$dir/cache-scratch-$name $i 8000 8 100000 >> $dir/Results/$name/cache-scratch-$i";
     print "$cmd\n";
     system "$cmd";
 }
