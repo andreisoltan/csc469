@@ -24,7 +24,7 @@
 #endif
 
 
-// This debug_print macro is borrowed from Jonathan Leffler, here:
+// This //debug_print macro is borrowed from Jonathan Leffler, here:
 // http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
 #define debug_print(...) \
             do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
@@ -170,10 +170,10 @@ void dbg_print_freelist(superblock_t *sb) {
     int steps = sb_size / BLOCK_SZ_SM;
 
     fl = sb->free;
-    debug_print("%20s|sb@%p->free = ", __func__, sb);
+    //debug_print("%20s|sb@%p->free = ", __func__, sb);
     while ((fl) && (steps > 0)) {
         steps--;
-        debug_print("%p -> ", fl);
+        //debug_print("%p -> ", fl);
         fl = fl->next;
     }
 }
@@ -182,9 +182,9 @@ void dbg_print_heap_info(const char *who) {
     int cores = 0, i = 0;
     cores = getNumProcessors();
     for (i = 0; i <= cores; i++) {
-        debug_print("%20s|heap%d %d/%d == %f\n",
-            who, i, HEAPS[i].usage, HEAPS[i].allocated,
-            1.0 * HEAPS[i].usage / HEAPS[i].allocated);
+        //debug_print("%20s|heap%d %d/%d == %f\n",
+        //    who, i, HEAPS[i].usage, HEAPS[i].allocated,
+        //    1.0 * HEAPS[i].usage / HEAPS[i].allocated);
     }
 }
 
@@ -193,10 +193,10 @@ void dbg_print_heap_details(int heap_num) {
     //freelist_t *fl = NULL;
     superblock_t *sb = (superblock_t *) &(HEAPS[heap_num]);
 
-    debug_print("heap %d (usage %d)\n\n"
-        "%15s %15s %15s %15s\n",
-        heap_num, sb->usage,
-        "sb_addr", "sz_class", "usage", "fl_len");
+    //debug_print("heap %d (usage %d)\n\n"
+    //    "%15s %15s %15s %15s\n",
+    //    heap_num, sb->usage,
+    //    "sb_addr", "sz_class", "usage", "fl_len");
 
     while (sb != NULL) {
         //fl = sb->free;
@@ -205,8 +205,8 @@ void dbg_print_heap_details(int heap_num) {
         //    fl = fl->next;
         //}
 
-        debug_print("%15p %15d %15d %15d\n",
-            sb, sb->size_class, sb->usage, i);
+        //debug_print("%15p %15d %15d %15d\n",
+        //    sb, sb->size_class, sb->usage, i);
         
         sb = sb->next;
     }
@@ -233,8 +233,8 @@ int mm_init (void) {
     superblock_t *sb = NULL;
     freelist_t *fl = NULL;
 
-    debug_print("\n%20s|entry; sizeof(heap_t): %d, sizeof(superblock_t): %d\n",
-        __func__, sizeof(heap_t), sizeof(superblock_t));
+    //debug_print("\n%20s|entry; sizeof(heap_t): %d, sizeof(superblock_t): %d\n",
+    //    __func__, sizeof(heap_t), sizeof(superblock_t));
 
     if (dseg_lo == NULL && dseg_hi == NULL) {
 
@@ -243,7 +243,7 @@ int mm_init (void) {
        pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK);
 #endif
 
-       //debug_print("%20s|calling mem_init...\n", __func__);
+       ////debug_print("%20s|calling mem_init...\n", __func__);
 
         // Initialize memory system
         mem_init();
@@ -259,7 +259,7 @@ int mm_init (void) {
 
         debug_print("%20s|##### Initialized large_list\n", __func__);
 
-        //debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
+        ////debug_print("%20s|pagesize: %d, sb_size: %d, n_cpu: %d\n",
         //    who, pagesize, sb_size, n_cpu);
 
         // initial sbrk for our allocator's book-keeping data
@@ -285,12 +285,12 @@ int mm_init (void) {
         // for the heaps, plus the superblock)
         alloc_size = sizeof(heap_t) * (n_cpu+1) + sizeof(superblock_t);
 
-        //debug_print("%20s|alloc_size: %d\n", who, alloc_size);
+        ////debug_print("%20s|alloc_size: %d\n", who, alloc_size);
         pthread_mutex_init(&(sbrk_lock), &mutexattr);
         // Get some memory (a superblock's worth)
         if ( (base = mm_sbrk(sb_size)) ) {
 
-            //debug_print("%20s|sb@%p created, size %d\n",
+            ////debug_print("%20s|sb@%p created, size %d\n",
             //    __func__, base, size_classes[FIRST_SB_CLASS]);
 
             // Zero the heap structures
@@ -299,7 +299,7 @@ int mm_init (void) {
             // Initialize locks and large lists on all heaps
             heap = HEAPS;
             for (i = 0; i < n_cpu+1; i++, heap++) {
-                //debug_print("%20s|HEAPS[%d] @ %p\n", __func__, i, heap);
+                ////debug_print("%20s|HEAPS[%d] @ %p\n", __func__, i, heap);
                 pthread_mutex_init(&(heap->lock), &mutexattr);
 
             }
@@ -377,13 +377,13 @@ void sb_insert(superblock_t *sb, int heap) {
         while ((fl) && steps > 0) {
             steps--;
             if ((fl < dseg_lo) || (fl > dseg_hi)) {
-                debug_print("%20s|wtf? fl entry out of bounds: %p\n",
-                    __func__, fl);
+                //debug_print("%20s|wtf? fl entry out of bounds: %p\n",
+                //    __func__, fl);
             }
             fl = fl->next;
         }
-        if (steps == 0)
-            debug_print("%20s|cycle in sb@%p's freelist\n", __func__, sb);
+        //if (steps == 0)
+            //debug_print("%20s|cycle in sb@%p's freelist\n", __func__, sb);
 #endif        
     }
 }
@@ -407,6 +407,7 @@ void *mm_malloc (size_t size) {
     while ((size_classes[class] < size) && (class < NSIZES))
         class++;
 
+	debug_print("%20s|##### class size %d\n", __func__, class);
 
     // Handle large allocations
     if (class == NSIZES) {
@@ -421,7 +422,7 @@ void *mm_malloc (size_t size) {
 	        exit(1);
 		}
 
-        debug_print("%20s|Getting large block @ %p\n", __func__, large_block);
+        //debug_print("%20s|Getting large block @ %p\n", __func__, large_block);
 
 		pthread_mutex_lock(&large_list_lock);
 
@@ -438,7 +439,7 @@ void *mm_malloc (size_t size) {
 
     } else {
 
-		//debug_print("%20s|lock heap%d\n", __func__, cpu+1);
+		////debug_print("%20s|lock heap%d\n", __func__, cpu+1);
 		// Lock the heap since we will be modifying it
 		pthread_mutex_lock(&(HEAPS[cpu+1].lock));
 
@@ -450,24 +451,24 @@ void *mm_malloc (size_t size) {
 		}
 
 
-		debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
-			__func__, sb, sb->heap, sb->usage, sb->size_class);
+		//debug_print("%20s|sb@%p|heap%d usage%d class%d\n",
+		//	__func__, sb, sb->heap, sb->usage, sb->size_class);
 
 		// Take block from freelist
 		ret = sb->free;
 		sb->free = sb->free->next;
 
 		// Unlock the superblock
-		//debug_print("%20s|unlock sb%p\n", __func__, sb);
+		////debug_print("%20s|unlock sb%p\n", __func__, sb);
 		pthread_mutex_unlock(&(sb->lock));
 
 		// Unlock the heap and return
-		//debug_print("%20s|unlock heap%d\n", __func__, cpu+1);
+		////debug_print("%20s|unlock heap%d\n", __func__, cpu+1);
 		pthread_mutex_unlock(&(HEAPS[cpu+1].lock));
 
 	}
 
-//    debug_print("%20s|%p\n", "mm_malloc", ret);
+//    //debug_print("%20s|%p\n", "mm_malloc", ret);
     //dbg_print_heap_info(who);
     return ret; 
 }
@@ -495,7 +496,7 @@ void mm_free (void *ptr) {
 
 	if(mega != NULL) {
 
-		debug_print("%20s|Freeing large block @ %p\n", __func__, mega);
+		//debug_print("%20s|Freeing large block @ %p\n", __func__, mega);
 
    	    // TODO: Replace this with a call to sb_free_large
    	    // TODO: After replace, remove locking inside sb_free_large
@@ -520,22 +521,22 @@ void mm_free (void *ptr) {
         + (unsigned long) dseg_lo );
 
 	// Lock the heap since we will be modifying it
-    //debug_print("%20s|lock heap%d\n", __func__, sb->heap);
+    ////debug_print("%20s|lock heap%d\n", __func__, sb->heap);
     pthread_mutex_lock(&(HEAPS[sb->heap].lock)); 
 
-    //debug_print("%20s|lock sb@%p\n", __func__, sb);
+    ////debug_print("%20s|lock sb@%p\n", __func__, sb);
     pthread_mutex_lock(&(sb->lock)); 
 
-    debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
+    //debug_print("%20s|%p from sb@%p\n", "mm_free", ptr, sb);
 
     // Insert the freed block at the head of the list (LIFO)
-    //debug_print("%20s|%p->free = %p->next = %p\n",
+    ////debug_print("%20s|%p->free = %p->next = %p\n",
     //    __func__, sb, ptr, sb->free);
     ((freelist_t*)ptr)->next = sb->free;
     sb->free = (freelist_t*)ptr;
 #ifdef DEBUG
     if ((sb->free < dseg_lo) || (sb->free > dseg_hi))
-        debug_print("%20s|wtf?", __func__);
+        //debug_print("%20s|wtf?", __func__);
 #endif
 
     // Adjust statistics
@@ -546,14 +547,14 @@ void mm_free (void *ptr) {
 
     if ((HEAPS[sb->heap].allocated - HEAPS[sb->heap].usage)
         > (SB_RELTHRESHOLD * sb_size)) {
-        //debug_print("%20s|heap%d|alloc-usage:%d > %d:REL_THRESH*sb_sz\n",
+        ////debug_print("%20s|heap%d|alloc-usage:%d > %d:REL_THRESH*sb_sz\n",
         //    "mm_free",
         //    sb->heap, (HEAPS[sb->heap].allocated - HEAPS[sb->heap].usage),
         //    (SB_RELTHRESHOLD * sb_size));
         
         if (HEAPS[sb->heap].usage <
             ((1.0 - SB_EMPTYFRAC) * HEAPS[sb->heap].allocated)) {
-            //debug_print("%20s| %d < ((1.0 - %f) * %d)) -- should release!\n",
+            ////debug_print("%20s| %d < ((1.0 - %f) * %d)) -- should release!\n",
             //    "mm_free",
             //    HEAPS[sb->heap].usage, SB_EMPTYFRAC,
             //    HEAPS[sb->heap].allocated);
@@ -564,9 +565,9 @@ void mm_free (void *ptr) {
         }
     }
     
-    //debug_print("%20s|unlock sb%p\n", __func__, sb);
+    ////debug_print("%20s|unlock sb%p\n", __func__, sb);
     pthread_mutex_unlock(&(sb->lock)); 
-    //debug_print("%20s|unlock heap%d\n", __func__, sb->heap);
+    ////debug_print("%20s|unlock heap%d\n", __func__, sb->heap);
     pthread_mutex_unlock(&(HEAPS[sb->heap].lock));
 }
 
@@ -604,7 +605,7 @@ superblock_t* sb_get(int core, int sz) {
             // We didn't find anything suitable on our own heap, will get
             // from the global, or a new one. In either of those cases
             // Lock the global heap before going up there to look...
-            //debug_print("%20s|lock heap0\n", __func__);
+            ////debug_print("%20s|lock heap0\n", __func__);
             pthread_mutex_lock(&(HEAPS[0].lock));
             if ((result = sb_find_free(&(HEAPS[0].sizes[sz]))) == NULL) {
                 if ((result = sb_find_free(&(HEAPS[0].sizes[0]))) == NULL) {
@@ -629,7 +630,7 @@ superblock_t* sb_get(int core, int sz) {
                 from_global = 1;
             }
             // Done with the global heap
-            //debug_print("%20s|unlock heap0\n", __func__);
+            ////debug_print("%20s|unlock heap0\n", __func__);
             pthread_mutex_unlock(&(HEAPS[0].lock));
         } else {
             // Found an empty SB in this core's heap, must init its freelist
@@ -639,15 +640,15 @@ superblock_t* sb_get(int core, int sz) {
         // We found a non-empty SB in this core's heap
     }
 
-    //debug_print("%20s|lock sb@%p\n", __func__, result);
+    ////debug_print("%20s|lock sb@%p\n", __func__, result);
     pthread_mutex_lock(&(result->lock));
 
-    //debug_print("%20s|HEAPS[%d].sbs[%d]=%p <-- %p\n",
+    ////debug_print("%20s|HEAPS[%d].sbs[%d]=%p <-- %p\n",
     //    "sb_get", core+1, sz, HEAPS[core+1].sbs[sz], result);
 
     // Adjust core's heap stats if necessary
     if (new_sb) {
-        //debug_print("%20s|new_sb\n", "sb_get");
+        ////debug_print("%20s|new_sb\n", "sb_get");
         result->heap = core + 1;
         HEAPS[core+1].allocated += sb_size;
         //new_or_empty = 1; // redundant
@@ -659,7 +660,7 @@ superblock_t* sb_get(int core, int sz) {
 
     // Adjust global/core stats if necessary
     if (from_global) {
-        //debug_print("%20s|from_global\n", "sb_get");
+        ////debug_print("%20s|from_global\n", "sb_get");
         result->heap = core + 1;
         HEAPS[0].allocated -= sb_size;
         HEAPS[0].usage -= result->usage;
@@ -669,7 +670,7 @@ superblock_t* sb_get(int core, int sz) {
 
     // If we found a new or empty SB, init its freelist, assign size class
     if (new_or_empty) {
-        //debug_print("%20s|new_or_empty\n", "sb_get");
+        ////debug_print("%20s|new_or_empty\n", "sb_get");
         result->free = fl_init(
             ALIGN_UP_TO((((unsigned long)result) + sizeof(superblock_t)), size_classes[sz]),
             (void*) (((unsigned long)result) + sb_size),
@@ -682,8 +683,8 @@ superblock_t* sb_get(int core, int sz) {
 
     //debug_print("%20s|sb@%p (heap %d, usage %d, sz %d)\n",
     //    "sb_get", result, result->heap, result->usage, result->size_class);
-    debug_print("%20s|sb@%p|from_global %d|new_or_empty %d|new_sb %d\n",
-        __func__, result, from_global, new_or_empty, new_sb);
+    //debug_print("%20s|sb@%p|from_global %d|new_or_empty %d|new_sb %d\n",
+    //    __func__, result, from_global, new_or_empty, new_sb);
 
     // Now we are guaranteed to have a superblock with free space pointed
     // at by result.
@@ -717,13 +718,13 @@ superblock_t* _sb_find_free(superblock_t **sb) {
     superblock_t *prev = NULL;
     superblock_t *ret = *sb;
 
-    //debug_print("%20s|sb=%p, *sb=ret=%p\n",
+    ////debug_print("%20s|sb=%p, *sb=ret=%p\n",
     //    "sb_find_free", sb, ret);
 
     while( (ret != NULL) && ( ! SB_HAS_FREE(ret)) ) {
         prev = ret;
         ret = ret->next;
-        //debug_print("%20s|stepping... sb@%p->free=%p\n",
+        ////debug_print("%20s|stepping... sb@%p->free=%p\n",
         //    "sb_find_free", ret, ret?(ret->free):(0));
     }
 
@@ -746,7 +747,7 @@ superblock_t* _sb_find_free(superblock_t **sb) {
         ret->next = NULL;
     }
 
-    //debug_print("%20s|returning %p\n", "sb_find_free", ret);
+    ////debug_print("%20s|returning %p\n", "sb_find_free", ret);
     return ret;
 }
 
@@ -777,7 +778,7 @@ freelist_t* fl_init(void *first, void *limit, size_t sz) {
     // The last freelist node should point nowhere
     fl->next = NULL;
 
-    //debug_print("%20s|%p .. %p: %d @ %d\n", "fl_init", first, limit, count, sz);
+    ////debug_print("%20s|%p .. %p: %d @ %d\n", "fl_init", first, limit, count, sz);
 
     return (freelist_t *) first;
 
@@ -902,7 +903,7 @@ linked_list_delete (linked_list_t * list, ll_node * link)
             list->last = 0;
         }
     }
-    free (link);
+
 }
 
 /* Traverse the list, using a callback function (i.e. visitor) */
