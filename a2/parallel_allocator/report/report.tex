@@ -51,21 +51,118 @@ Multithreaded Applications" paper by Berger et al. In addition, we use
 \newpage
 \section{Allocator Design}
 
-Insert smart text about the design of our allocator...
+Our allocators design mimics that of Hoard (the 2000 asplos version -- not
+current) very closely. Because we were not permitted access to the code there
+were thing which we had to improvise. Certain requirements of the assignment
+were influential on the design as well.
 
-What metadata do we maintain? Why do we need it?
-\begin{itemize}
-	\item for the allocator
-	\item for the heap(s)
-	\item for the superblock(s)
-	\item for the blocks inside the superblock
-\end{itemize}
+Very broadly, our allocator uses per-CPU heaps with one shared, global heap.
+On those heaps are a collection of superblocks. Each superblock is of a
+certain size class, meaning that it will only hold allocations of a fixed
+(power of two) size. Each heap's collection of superblocks is divided into
+separate lists of size classes and then further into a handful of distinct
+fullness groups. As superblocks fill up or empty out they are refiled into
+the appropriate fullness group.
 
-Where do we put the metadata? Why? (e.g. the structs for ht efree list at the 
-end of the free memory block, because that makes it easier to merge to the 
-right, where there is usally free memory. Just an example, not necessarily true.)
+\subsection{Metadata}
+In order to manage our allocator we store a few things globally but try to
+minimize this as the assignment requires us to use less than 1k of global
+storage. The bulk of the metadata is stored inside the first superblock
+of space we receive from mem\_sbrk(). We assign this first superblock an
+arbitrary (small) size class in the hopes that the space will be used by
+calls to mm\_malloc().
 
+Because we know that this first allocation is based at dseg\_lo we can use
+some pointer arithmetic to later find our heap structures. We simply offset
+from desg\_lo by the size of the superblock header and treat that address as
+a heap structure pointer. Using array notation, we can access the global
+heap (at index 0) and the per-CPU heaps (at indices [1, number of CPUs]).
+
+\subsubsection{Globals}
+We hold an array, size\_classes, containing at size\_classes[i] the size
+in bytes of the i\textsuperscript{th} size class. Size class 0 is used to
+store empty superblocks which we treat as not having any size class.
+
+We store the system's page size and our superblock size as global variables
+after computing them during mm\_init().
+
+Because calls to mem\_sbrk() must be serialized (reference assignment?), we
+store a global lock, sbrk\_lock.
+
+For our list of large allocations, we store the pointer to the head of the
+list and a lock for it in the global space.
+
+For debugging builds we chose to use pthread\_mutexes of type
+PTHREAD\_MUTEX\_ERRORCHECK, so we have a global pthread\_mutexattr\_t in which
+to store the type. Only enabled in such builds, we also have counters for
+number of mallocs and frees.
+
+\subsubsection{Heaps}
+As mentioned above, we store our heap structures in the first superblock
+that is requested from the system. Each heap structure contains the following:
+\begin{description}
+    \item[lock] a pthread\_mutex\_t
+    \item[usage] the number of bytes currently stored in the heap
+    \item[allocated] the current capacity in bytes of this heap
+        (equal to the number of superblocks on the heap * superblock size)
+    \item[sizes] an array containing, for each size class, pointers to
+        its fullness groups: full, fullish, and emptyish.
+\end{description}
+
+\subsubsection{Superblocks}
+A superblock structure is written at the header of each allocated superblock.
+That header contains the following information:
+\begin{description}
+    \item[lock] a pthread\_mutex\_t
+    \item[usage] the number of bytes currently stored in this superblock
+    \item[heap] the heap number this superblock is currently associated with
+    \item[size\_class] index into global size\_classes, describing the block
+        size held in this superblock
+    \item[prev] linked-list pointer for navigating within fullness group
+    \item[next] linked-list pointer for navigating within fullness group
+    \item[group] pointer to pointer to head of current fullness group
+    \item[free] head of freelist linked-list (singly linked)
+\end{description}
+
+The freelist is stored in the free space of the superblock. The memory
+location of a freelist node is taken to mark the head of an unallocated block.
+
+\subsection {Behaviour}
+As discussed above, our first order of business is to obtain a superblock-sized
+piece of memory from the system. We write some bookkeeping structures onto it,
+give it a size class which will likely be used by the calling programs and then
+create a freelist in the space between our header and the end of the
+superblock. This initial superblock is then put onto the global heap before we
+return from mm\_init().
+
+\subsubsection{Allocation}
+Normal allocations follow much the same pattern as in Hoard. We find which of
+our power of two size classes the request will fit into. If none are large 
+enough, we'll take a different approach, detailed below.
+
+Upon establishing the size class, we begin to search for a superblock with
+free space in the current CPU's heap -- first in the size class, and then in the
+empty, unclassified superblocks. If nothing suitable is found there, we search
+the global heap for something of the correct size class and then for an empty
+superblock. If we still have not found anything we'll request another
+superblock's worth of memory from the system.
+
+In any case, we take that superblock and insert it into our current CPU's heap.
+This insertion puts the superblock at the head of the appropriate fullness
+group's list. Head insertion is beneficial because we can do it in constant
+time and also because recently accessed superblocks will remain at the front
+of our lists, and hopefully stay in cache. We mimic this behaviour from Hoard.
+
+\paragraph{Fullness groups}
+When searching non-empty superblocks, we prefer to allocate from a fullish
+superblock. The intention is that those superblocks are more likely to be 
+cache- and/or memory-resident.
+
+\paragraph{Large allocation}
 How do we handle rhe really large allocations?
+
+\subsubsection{Freeing}
+How do we handle normal/large frees?
 
 Was there something we did to boost performance? (mention memory usage, 
 processing, internal and external fragmentation (with no numbers?))
