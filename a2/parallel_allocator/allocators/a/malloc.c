@@ -902,7 +902,8 @@ sb_get_large(size_t size) {
 	// Set the data pointer to the memory block given to the user
 	// This is not really necessary, because we don't use it.
 	// For consisency and convenience later on.
-	new_node->data = (void *) new_node + sizeof(megablock_t);
+	new_node->data = (void *)
+		(((unsigned long) new_node) + sizeof(megablock_t));
 	new_node->size = alloc_size;
 	
 	return new_node;
@@ -917,7 +918,7 @@ sb_free_large(linked_list_t * list, void * data) {
 	// No locking required, since it is done by the callers
 
 	// Get the LL node to work with
-	node = (megablock_t*) ((unsigned long) data) - sizeof(megablock_t);
+	node = (megablock_t*) (((unsigned long) data) - sizeof(megablock_t));
 
 	// Disconnect the node from the data
 	node->data = NULL;
@@ -934,6 +935,10 @@ sb_free_large(linked_list_t * list, void * data) {
 		sb = (superblock_t *) ((unsigned long) node) + i;
 
 		bzero((void*) sb, sizeof(superblock_t));
+
+		sb->heap = 0;
+
+		pthread_mutex_init(&(HEAPS[sb->heap].lock), &mutexattr);
 
 		sb_insert(sb, 0);
 	}
