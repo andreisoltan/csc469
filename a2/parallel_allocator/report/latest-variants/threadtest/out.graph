@@ -1,0 +1,60 @@
+name = libamalloc-smsb-smblock
+	scalability score 0.413
+	fragmentation score = 5.762
+
+name = libamalloc-smsb
+	scalability score 0.266
+	fragmentation score = 5.750
+
+name = libamalloc-smblock
+	scalability score 0.305
+	fragmentation score = 11.100
+
+name = libamalloc-reg
+	scalability score 0.121
+	fragmentation score = 11.000
+
+name = libamalloc-lowthresh-smsb-smblock
+	scalability score 0.277
+	fragmentation score = 5.762
+
+name = libamalloc-lowthresh-smsb
+	scalability score 0.270
+	fragmentation score = 5.750
+
+name = libamalloc-lowthresh-smblock
+	scalability score 0.293
+	fragmentation score = 11.050
+
+name = libamalloc-lowthresh
+	scalability score 0.292
+	fragmentation score = 11.125
+
+name = libamalloc-lowfrac-smsb
+	scalability score 0.469
+	fragmentation score = 5.762
+
+name = libamalloc-lowfrac-smblock
+	scalability score 0.291
+	fragmentation score = 11.075
+
+name = libamalloc-lowfrac-lowthresh-smsb-smblock
+	scalability score 0.269
+	fragmentation score = 5.750
+
+name = libamalloc-lowfrac-lowthresh-smsb
+	scalability score 0.268
+	fragmentation score = 5.750
+
+name = libamalloc-lowfrac-lowthresh-smblock
+	scalability score 0.288
+	fragmentation score = 11.025
+
+name = libamalloc-lowfrac-lowthresh
+	scalability score 0.458
+	fragmentation score = 11.075
+
+name = libamalloc-lowfrac
+	scalability score 0.292
+	fragmentation score = 11.000
+

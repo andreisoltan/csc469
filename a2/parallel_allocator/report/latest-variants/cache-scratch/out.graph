@@ -1,0 +1,81 @@
+oops count is zero, libamalloc-smsb-smblock, cache-scratch-2
+oops count is zero, libamalloc-smsb-smblock, cache-scratch-3
+oops count is zero, libamalloc-smsb-smblock, cache-scratch-4
+oops count is zero, libamalloc-smsb, cache-scratch-2
+oops count is zero, libamalloc-smsb, cache-scratch-3
+oops count is zero, libamalloc-smsb, cache-scratch-4
+oops count is zero, libamalloc-lowthresh-smsb-smblock, cache-scratch-2
+oops count is zero, libamalloc-lowthresh-smsb-smblock, cache-scratch-3
+oops count is zero, libamalloc-lowthresh-smsb-smblock, cache-scratch-4
+oops count is zero, libamalloc-lowthresh-smsb, cache-scratch-2
+oops count is zero, libamalloc-lowthresh-smsb, cache-scratch-3
+oops count is zero, libamalloc-lowthresh-smsb, cache-scratch-4
+oops count is zero, libamalloc-lowfrac-smsb, cache-scratch-2
+oops count is zero, libamalloc-lowfrac-smsb, cache-scratch-3
+oops count is zero, libamalloc-lowfrac-smsb, cache-scratch-4
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb-smblock, cache-scratch-2
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb-smblock, cache-scratch-3
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb-smblock, cache-scratch-4
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb, cache-scratch-2
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb, cache-scratch-3
+oops count is zero, libamalloc-lowfrac-lowthresh-smsb, cache-scratch-4
+name = libamalloc-smsb-smblock
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-smsb
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-smblock
+	scalability score 0.908
+	fragmentation score = 14.975
+
+name = libamalloc-reg
+	scalability score 1.161
+	fragmentation score = 15.000
+
+name = libamalloc-lowthresh-smsb-smblock
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-lowthresh-smsb
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-lowthresh-smblock
+	scalability score 1.167
+	fragmentation score = 15.000
+
+name = libamalloc-lowthresh
+	scalability score 0.927
+	fragmentation score = 15.000
+
+name = libamalloc-lowfrac-smsb
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-lowfrac-smblock
+	scalability score 0.923
+	fragmentation score = 14.975
+
+name = libamalloc-lowfrac-lowthresh-smsb-smblock
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-lowfrac-lowthresh-smsb
+	scalability score 0.000
+	fragmentation score = 1.000
+
+name = libamalloc-lowfrac-lowthresh-smblock
+	scalability score 0.920
+	fragmentation score = 15.000
+
+name = libamalloc-lowfrac-lowthresh
+	scalability score 0.924
+	fragmentation score = 15.000
+
+name = libamalloc-lowfrac
+	scalability score 0.934
+	fragmentation score = 15.000
+

@@ -1,0 +1,15 @@
+libamalloc-smsb-smblock 0.139 3.727
+libamalloc-smsb 0.139 3.744
+libamalloc-smblock 0.139 2.610
+libamalloc-reg 0.139 2.666
+libamalloc-lowthresh-smsb-smblock 0.139 3.754
+libamalloc-lowthresh-smsb 0.139 3.717
+libamalloc-lowthresh-smblock 0.140 2.705
+libamalloc-lowthresh 0.140 2.606
+libamalloc-lowfrac-smsb 0.139 7.813
+libamalloc-lowfrac-smblock 0.164 5.312
+libamalloc-lowfrac-lowthresh-smsb-smblock 0.139 7.830
+libamalloc-lowfrac-lowthresh-smsb 0.139 7.778
+libamalloc-lowfrac-lowthresh-smblock 0.165 5.291
+libamalloc-lowfrac-lowthresh 0.160 5.293
+libamalloc-lowfrac 0.164 5.249

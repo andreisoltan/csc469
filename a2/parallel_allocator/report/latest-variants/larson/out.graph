@@ -1,0 +1,120 @@
+i = 1, memory used: 1016011.8 avg, 987135 min, 1490943 max
+i = 2, memory used: 1771519 avg, 1675263 min, 2084863 max
+i = 3, memory used: 2547915.8 avg, 2478079 min, 2916351 max
+i = 4, memory used: 3309157.4 avg, 3235839 min, 3346431 max
+i = 1, memory used: 1015602.2 avg, 987135 min, 1490943 max
+i = 2, memory used: 1801624.6 avg, 1691647 min, 2559999 max
+i = 3, memory used: 2536037.4 avg, 2494463 min, 2588671 max
+i = 4, memory used: 3329432.6 avg, 3244031 min, 3530751 max
+i = 1, memory used: 458751 avg, 458751 min, 458751 max
+i = 2, memory used: 1264024.6 avg, 1220607 min, 1318911 max
+i = 3, memory used: 2133195.8 avg, 2121727 min, 2187263 max
+i = 4, memory used: 2814770.2 avg, 2793471 min, 2867199 max
+i = 1, memory used: 503397.4 avg, 458751 min, 909311 max
+i = 2, memory used: 1282866.2 avg, 1245183 min, 1703935 max
+i = 3, memory used: 2130328.6 avg, 2121727 min, 2146303 max
+i = 4, memory used: 2817227.8 avg, 2801663 min, 2867199 max
+i = 1, memory used: 1040792.6 avg, 987135 min, 1490943 max
+i = 2, memory used: 1755339.8 avg, 1683455 min, 1835007 max
+i = 3, memory used: 2549349.4 avg, 2473983 min, 2715647 max
+i = 4, memory used: 3341311 avg, 3256319 min, 3616767 max
+i = 1, memory used: 1014373.4 avg, 987135 min, 1490943 max
+i = 2, memory used: 1752267.8 avg, 1691647 min, 1859583 max
+i = 3, memory used: 2545458.2 avg, 2465791 min, 2936831 max
+i = 4, memory used: 3319192.6 avg, 3244031 min, 3375103 max
+i = 1, memory used: 547634.2 avg, 458751 min, 909311 max
+i = 2, memory used: 1268939.8 avg, 1212415 min, 1376255 max
+i = 3, memory used: 2133605.4 avg, 2105343 min, 2179071 max
+i = 4, memory used: 2813131.8 avg, 2801663 min, 2850815 max
+i = 1, memory used: 458751 avg, 458751 min, 458751 max
+i = 2, memory used: 1256651.8 avg, 1245183 min, 1302527 max
+i = 3, memory used: 2132376.6 avg, 2121727 min, 2195455 max
+i = 4, memory used: 2815179.8 avg, 2801663 min, 2850815 max
+i = 1, memory used: 2877848.6 avg, 2850815 min, 3301375 max
+i = 2, memory used: 3697663 avg, 3461119 min, 4235263 max
+i = 3, memory used: 4427570.2 avg, 4329471 min, 4603903 max
+i = 4, memory used: 5192293.4 avg, 5095423 min, 5345279 max
+i = 1, memory used: 1559755.8 avg, 1515519 min, 1949695 max
+i = 2, memory used: 2528869.4 avg, 2400255 min, 2736127 max
+i = 3, memory used: 3312843.8 avg, 3178495 min, 3473407 max
+i = 4, memory used: 4684184.6 avg, 4071423 min, 4825087 max
+i = 1, memory used: 2922085.4 avg, 2850815 min, 3313663 max
+i = 2, memory used: 3660184.6 avg, 3448831 min, 4128767 max
+i = 3, memory used: 4396645.4 avg, 4292607 min, 4530175 max
+i = 4, memory used: 5194751 avg, 5140479 min, 5328895 max
+i = 1, memory used: 2877848.6 avg, 2850815 min, 3313663 max
+i = 2, memory used: 3643186.2 avg, 3518463 min, 4173823 max
+i = 3, memory used: 4401355.8 avg, 4296703 min, 4575231 max
+i = 4, memory used: 5202328.6 avg, 5115903 min, 5341183 max
+i = 1, memory used: 1558936.6 avg, 1515519 min, 1949695 max
+i = 2, memory used: 2483813.4 avg, 2367487 min, 2670591 max
+i = 3, memory used: 3330047 avg, 3170303 min, 3604479 max
+i = 4, memory used: 4674354.2 avg, 4145151 min, 4849663 max
+i = 1, memory used: 1561803.8 avg, 1507327 min, 1974271 max
+i = 2, memory used: 2478488.6 avg, 2375679 min, 2629631 max
+i = 3, memory used: 3327999 avg, 3178495 min, 3424255 max
+i = 4, memory used: 4685413.4 avg, 4186111 min, 4816895 max
+i = 1, memory used: 1560984.6 avg, 1515519 min, 1974271 max
+i = 2, memory used: 2435890.2 avg, 2269183 min, 2572287 max
+i = 3, memory used: 3299736.6 avg, 3194879 min, 3489791 max
+i = 4, memory used: 4639538.2 avg, 4095999 min, 4841471 max
+name = libamalloc-smsb-smblock
+	scalability score 0.139
+	fragmentation score = 3.727
+
+name = libamalloc-smsb
+	scalability score 0.139
+	fragmentation score = 3.744
+
+name = libamalloc-smblock
+	scalability score 0.139
+	fragmentation score = 2.610
+
+name = libamalloc-reg
+	scalability score 0.139
+	fragmentation score = 2.666
+
+name = libamalloc-lowthresh-smsb-smblock
+	scalability score 0.139
+	fragmentation score = 3.754
+
+name = libamalloc-lowthresh-smsb
+	scalability score 0.139
+	fragmentation score = 3.717
+
+name = libamalloc-lowthresh-smblock
+	scalability score 0.140
+	fragmentation score = 2.705
+
+name = libamalloc-lowthresh
+	scalability score 0.140
+	fragmentation score = 2.606
+
+name = libamalloc-lowfrac-smsb
+	scalability score 0.139
+	fragmentation score = 7.813
+
+name = libamalloc-lowfrac-smblock
+	scalability score 0.164
+	fragmentation score = 5.312
+
+name = libamalloc-lowfrac-lowthresh-smsb-smblock
+	scalability score 0.139
+	fragmentation score = 7.830
+
+name = libamalloc-lowfrac-lowthresh-smsb
+	scalability score 0.139
+	fragmentation score = 7.778
+
+name = libamalloc-lowfrac-lowthresh-smblock
+	scalability score 0.165
+	fragmentation score = 5.291
+
+name = libamalloc-lowfrac-lowthresh
+	scalability score 0.160
+	fragmentation score = 5.293
+
+name = libamalloc-lowfrac
+	scalability score 0.164
+	fragmentation score = 5.249
+

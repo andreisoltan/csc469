@@ -5,15 +5,6 @@ use strict;
 my $graphtitle = "active-false runtimes";
 
 my @namelist = ("libc", "kheap", "cmu", "amalloc");
-my %names;
-
-# This allows you to give each series a name on the graph
-# that is different from the file or directory names used
-# to collect the data.  We happen to be using the same names.
-$names{"libc"} = "libc";
-$names{"kheap"} = "kheap";
-$names{"cmu"} = "cmu";
-$names{"amalloc"} = "amalloc";
 
 my $name;
 my $base;
@@ -101,7 +92,7 @@ foreach $name (@namelist) {
     $fragmentation{$name} /= $nthread;
     printf "name = $name\n\tscalability score %.3f\n",$scalability{$name};
     printf "\tfragmentation score = %.3f\n\n",$fragmentation{$name};
-    my $titlename = $names{$name};
+    my $titlename = $name;
     if ($name eq $namelist[-1]) {
 	print PLOT "\"Results/$name/data\" title \"$titlename\" with linespoints\n";
     } else {
