@@ -50,10 +50,10 @@ and shows the comparison with other allocators. Finally, section
 \section{Allocator Design}
 \label{sec:design}
 
-Our allocators design mimics that of Hoard (the 2000 asplos version -- not
-current) very closely. Because we were not permitted access to the code there
-were thing which we had to improvise. Certain requirements of the assignment
-were influential on the design as well.
+Our allocators design mimics that of Hoard \cite{berger00} very closely.
+Because we were not permitted access to the code there were things which we
+had to improvise. Certain requirements of the assignment were influential
+on the design as well.
 
 Very broadly, our allocator uses per-CPU heaps with one shared, global heap.
 On those heaps are a collection of superblocks. Each superblock is of a
@@ -192,7 +192,10 @@ two parameters:
 \end{description}
 
 Once we determine we must release a superblock it is chosen by the following
-logic. We prefer to 
+logic. We prefer to release from size class 0, the empty superblocks. If none
+are available there, we look at each size class' emptyish list taking the
+first one that we encounter.
+
 Was there something we did to boost performance? (mention memory usage, 
 processing, internal and external fragmentation (with no numbers?))
 
