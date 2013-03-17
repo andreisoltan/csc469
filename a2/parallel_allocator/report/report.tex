@@ -10,7 +10,7 @@
 \author{Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu
 \and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
 \title{CSC469: Assignment 2}
-\date{15 March, 2013}
+\date{17 March, 2013}
 
 % Show paragraphs in table of contents
 \setcounter{tocdepth}{5}
@@ -51,12 +51,14 @@ and shows the comparison with other allocators. Finally, section
 \label{sec:design}
 
 Our allocators design mimics that of Hoard \cite{berger00} very closely.
-Because we were not permitted access to the code there were things which we
-had to improvise. Certain requirements of the assignment were influential
-on the design as well.
+Because we were not permitted access to the code there were a few areas where 
+we had to deduce or design our own behavior. Certain requirements of the 
+assignment were influential on the design as well.
 
 Very broadly, our allocator uses per-CPU heaps with one shared, global heap.
-On those heaps are a collection of superblocks. Each superblock is of a
+This is due to the expectation that threads will be bound to a single CPU,
+and as a result the number of threads will be the same as the number of CPUs.
+Each of those heaps has a collection of superblocks. Each superblock is of a
 certain size class, meaning that it will only hold allocations of a fixed
 (power of two) size. Each heap's collection of superblocks is divided into
 separate lists of size classes and then further into a handful of distinct
@@ -64,7 +66,7 @@ fullness groups. As superblocks fill up or empty out they are refiled into
 the appropriate fullness group.
 
 \subsection{Metadata}
-In order to manage our allocator we store a few things globally but try to
+In order to manage our allocator, we store a few things globally but try to
 minimize this as the assignment requires us to use less than 1k of global
 storage. The bulk of the metadata is stored inside the first superblock
 of space we receive from mem\_sbrk(). We assign this first superblock an
@@ -79,17 +81,21 @@ heap (at index 0) and the per-CPU heaps (at indices [1, number of CPUs]).
 
 \subsubsection{Globals}
 We hold an array, size\_classes, containing at size\_classes[i] the size
-in bytes of the i\textsuperscript{th} size class. Size class 0 is used to
-store empty superblocks which we treat as not having any size class.
+in bytes of the i\textsuperscript{th} size class. The one exception is that 
+size\_classes[0]=0. This is becasue, size\_class[0] is used to store empty 
+superblocks which we treat as not having any size class.
 
 We store the system's page size and our superblock size as global variables
 after computing them during mm\_init().
 
-Because calls to mem\_sbrk() must be serialized (reference assignment?), we
-store a global lock, sbrk\_lock.
+Because calls to mem\_sbrk() must be serialized, as the assignment requires, 
+we do so by using and storing a global lock, sbrk\_lock.
 
-For our list of large allocations, we store the pointer to the head of the
-list and a lock for it in the global space.
+For our list of large allocations, we store a structure for a doubly linked 
+list, to keep track of the head and tail of the list. In addition, since, for 
+reasons discussed in section \ref{sec:alternatives}, the list for large
+allocations is global, we maintain a lock to ensure a consistent state 
+of the list at all times.
 
 For debugging builds we chose to use pthread\_mutexes of type
 PTHREAD\_MUTEX\_ERRORCHECK, so we have a global pthread\_mutexattr\_t in which
@@ -156,9 +162,9 @@ of our lists, and hopefully stay in cache. We mimic this behaviour from Hoard.
 Superblocks are segregated into fullness groups based on the fraction
 (usage / sb\_size) as follows:
 \begin{description}
-    \item[full] fullness = 1.0
-    \item[fullish] fullness \in (1.0, SB\_EMPTYFRAC)
-    \item[emptyish] fullness \in [SB\_EMPTYFRAC, 0]
+    \item[full] $fullness = 1.0$
+    \item[fullish] $fullness \in (1.0, SB\_EMPTYFRAC)$
+	\item[emptyish] $fullness \in [SB\_EMPTYFRAC, 0]$
 \end{description}
 
 When searching non-empty superblocks, we prefer to allocate from a fullish
@@ -166,7 +172,18 @@ superblock. The intention is that those superblocks are more likely to be
 cache- and/or memory-resident.
 
 \paragraph{Large allocation}
-How do we handle rhe really large allocations?
+When the requested allocation size is larger than our size classes can 
+accomodate, we classify these as large allocations and handle them separately.
+We keep track of the large allocations using a doubly linked list. The linked 
+list node structures are stored together with the memory segment to be returned
+to the user. As such, when allocating memory we include the size of the linked
+list node struct in the calculations. In addition, we require all alocations
+to be aligned on superblock boundaries. This allows us to maintain consistency
+in assumptions and boundary calculations between the two modes of allocations:
+regular and large. Once we have determined the size of the memory segment to
+allocate, we make a call to mem\_sbrk and obtain the necessary segment. After
+updating the metadata (e.g. allocation size), we return the requested memory 
+to the user.
 
 \subsubsection{Freeing}
 When we recieve a free request we first must determine of it is one of the
@@ -180,6 +197,15 @@ statistics. We re-insert the superblock in question at the head of its
 fullness group (hoping to keep it cache- and/or memory-resident) and then
 check to see if we should release a superblock up to the global heap.
 
+Large allocations require less maintenance and conditions when freeing.
+Considering that our metadata contains knowledge about the the size of each 
+of the large allocations, and the allocations on superblock boundaries 
+allow us to easily reuse newly freed blocks from large allocations. When free 
+is called on a large block, we partition it into superblocks, which are then 
+initialized and added to the global heap. Due to our alignment conditions, 
+this transition is possible, with relatively little processing overhead.
+This reuse is meant to have a beneficial influence on memory fragmentation.
+
 \subsubsection{Superblock release}
 As in Hoard, we determine whether or not to move a superblock from the CPU's
 heap up to the global heap based on the usage/allocated statistics and
@@ -191,7 +217,7 @@ two parameters:
         release a superblock.
 \end{description}
 
-Once we determine we must release a superblock it is chosen by the following
+Once we determine we must release a superblock, it is chosen by the following
 logic. We prefer to release from size class 0, the empty superblocks. If none
 are available there, we look at each size class' emptyish list taking the
 first one that we encounter.
@@ -205,6 +231,56 @@ are worth mentioning?
 \newpage
 \section{Design Alternatives}
 \label{sec:alternatives}
+
+\subsection{Fullness groups}
+
+\subsection{Large allocation}
+The implementation of the large allocations was substatially different from
+the Hoard paper, since using mmap() was not an option. As such, we had to
+define our own design. From the beginning it was clear that large memory 
+allocations are rare, hard to predict in size and frequency of occurrence, and
+expensive in terms of memory and processing.
+
+When keeping track of the large allocations, we considered replicating the
+approach we use for regular superblock allocations. It soon became clear that, 
+due to the unpredictable frequency and size of large allocations, it would be 
+wasteful to allocate something similar to a superblock for keeping track of the
+metadata of large memory segments. Instead we opted for a linked list structure
+that would dynamically grow or shrink with the number of blocks used. This 
+allows for the metadata space and processing cost to pe paid only when there 
+is a large allocation. In considerations of space overhead it is worth 
+highlighting that the large allocations are usually required when the requested 
+size is more than half the size of a superblock. This puts them in the range of 
+a few thousand bytes. The additional 10 bytes of metadata usually constitute an 
+insignificant amount of \textless 0.25\%. As a result, the processing cost of
+allocating and maintaining the list and the memory cost are amortized over the 
+size of each block and over the number of large allocations made.
+
+When deciding the placement and the visibility of the large blocks we initially
+implemented them on a per heap basis. This proved to give rise to additional
+challenges when a large segment allocated on CPU A, would be freed on CPU B.
+This required searching through all heaps for the pointer to be freed just to 
+determine if it was a pointer to a large segment. Clearly this decision would 
+incur a mandatory time cost, that would be paid on every call to mm\_free. 
+This time cost could be reduced if the list of large allocations were globaal, 
+andr we required searching just one list. In addition, using a single global
+list would reduce the cost of locking - instead of contending on a few locks 
+most of the time, CPUs would contend on one lock only when making large 
+allocations, which are assumed to be rare.
+
+Freeing large allocations was another point of decision for us. Due to the
+simple linked list implementation, it is sufficient to disconnect a large 
+memory block from the them from the global list. This solution presents 
+little challenge in terms of implementationa and processing overhead. 
+However, this would mean that the large memory that was just freed is
+essentailly incaccessible to any process. Thus, to avoid large unused chuncks
+of memory and to improve our memory fragmentation, we have decided to 
+reuse the freed large segments. This purpose implied splitting big memory 
+pieces into superblocks, which in turn needed some metadata and extra 
+processing. In addition, it introduced a new point of lock contention, a new 
+point of failure and more bugs. So, we have decided to pay the developments 
+cost, together with some price for processing, in order to improve memory
+performance.
 
 Insert smart text about other features we considered for our allocator...
 
@@ -221,6 +297,8 @@ Was there something we did, avoided or fixed to have good performance?
 Did we decided in favor or against something regarding fragmentation?
 
 Should this a subsection of the Design section above?
+
+
 
 \newpage
 \section{Performance Analysis}
