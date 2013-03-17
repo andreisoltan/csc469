@@ -162,9 +162,9 @@ of our lists, and hopefully stay in cache. We mimic this behaviour from Hoard.
 Superblocks are segregated into fullness groups based on the fraction
 (usage / sb\_size) as follows:
 \begin{description}
-    \item[full] fullness = 1.0
-    \item[fullish] fullness \in (1.0, SB\_EMPTYFRAC)
-	\item[emptyish] fullness \in [SB\_EMPTYFRAC, 0]
+    \item[full] $fullness = 1.0$
+    \item[fullish] $fullness \in (1.0, SB\_EMPTYFRAC)$
+	\item[emptyish] $fullness \in [SB\_EMPTYFRAC, 0]$
 \end{description}
 
 When searching non-empty superblocks, we prefer to allocate from a fullish
@@ -252,7 +252,7 @@ is a large allocation. In considerations of space overhead it is worth
 highlighting that the large allocations are usually required when the requested 
 size is more than half the size of a superblock. This puts them in the range of 
 a few thousand bytes. The additional 10 bytes of metadata usually constitute an 
-insignificant amount of \lt 0.25\%. As a result, the processing cost of
+insignificant amount of \textless 0.25\%. As a result, the processing cost of
 allocating and maintaining the list and the memory cost are amortized over the 
 size of each block and over the number of large allocations made.
 
@@ -261,7 +261,7 @@ implemented them on a per heap basis. This proved to give rise to additional
 challenges when a large segment allocated on CPU A, would be freed on CPU B.
 This required searching through all heaps for the pointer to be freed just to 
 determine if it was a pointer to a large segment. Clearly this decision would 
-incur a mandatory time cost, that would be paid on every call to mm_free. 
+incur a mandatory time cost, that would be paid on every call to mm\_free. 
 This time cost could be reduced if the list of large allocations were globaal, 
 andr we required searching just one list. In addition, using a single global
 list would reduce the cost of locking - instead of contending on a few locks 
