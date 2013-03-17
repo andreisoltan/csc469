@@ -153,6 +153,14 @@ time and also because recently accessed superblocks will remain at the front
 of our lists, and hopefully stay in cache. We mimic this behaviour from Hoard.
 
 \paragraph{Fullness groups}
+Superblocks are segregated into fullness groups based on the fraction
+(usage / sb\_size) as follows:
+\begin{description}
+    \item[full] fullness = 1.0
+    \item[fullish] fullness \in (1.0, SB\_EMPTYFRAC)
+    \item[emptyish] fullness \in [SB\_EMPTYFRAC, 0]
+\end{description}
+
 When searching non-empty superblocks, we prefer to allocate from a fullish
 superblock. The intention is that those superblocks are more likely to be 
 cache- and/or memory-resident.
@@ -161,8 +169,30 @@ cache- and/or memory-resident.
 How do we handle rhe really large allocations?
 
 \subsubsection{Freeing}
-How do we handle normal/large frees?
+When we recieve a free request we first must determine of it is one of the
+large allocations, or if it is a normal superblock-stored allocation. We
+search the list of large allocations -- this is not a very fast operation,
+we've chosen this method for simplicity because the benchmarks we are testing
+against do not do many large allocations -- if it is not found there, we
+assume that it is on a superblock. Some pointer arithmetic will find us the 
+superblock's header and then we can update the heap and superblock's
+statistics. We re-insert the superblock in question at the head of its
+fullness group (hoping to keep it cache- and/or memory-resident) and then
+check to see if we should release a superblock up to the global heap.
 
+\subsubsection{Superblock release}
+As in Hoard, we determine whether or not to move a superblock from the CPU's
+heap up to the global heap based on the usage/allocated statistics and
+two parameters: 
+\begin{description}
+    \item[SB\_RELTHRESHOLD] Free space on heap (measured in superblocks)
+        before we consider releasing a superblock
+    \item[SB\_EMPTYFRAC] Fullness percentage of heap below which we will
+        release a superblock.
+\end{description}
+
+Once we determine we must release a superblock it is chosen by the following
+logic. We prefer to 
 Was there something we did to boost performance? (mention memory usage, 
 processing, internal and external fragmentation (with no numbers?))
 

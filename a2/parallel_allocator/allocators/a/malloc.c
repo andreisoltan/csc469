@@ -61,7 +61,7 @@ name_t myname = {
 
 // Number of free superblocks before we release one
 #ifdef OPT_LOW_THRESH
-    #define SB_RELTHRESHOLD 4
+    #define SB_RELTHRESHOLD 2
 #else
     #define SB_RELTHRESHOLD 4
 #endif
