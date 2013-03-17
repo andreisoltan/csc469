@@ -30,26 +30,25 @@
 \newpage
 \section{Introduction}
 
-Insert smart text here...
-
-Restate the problem (multithreaded memory allocator). Mention the papers we
-used (Hoard, Miser) and other resources. Describe (succicntly) the goal we are 
-trying to achieve (speed, scalability, false sharing avoidance, low fragmentation). 
-This is a sort of related works, in a way.
-
-Describe the structure of the report. (i.e. section 1 - intro, etc.)
-
 The goal of this assignment is to implement a multithreaded memory allocator.
 The challenge is to achieve an implementation that is as fast as a regular 
 malloc, and whose performance scales linearly with the increased number of
 threads, while at the same time avoiding false sharing and having low 
 memory fragmentation. For the approach and the design of the allocator, 
-We use as point of reference the "Hoard: A Scalable Memory Allocator for 
-Multithreaded Applications" paper by Berger et al. In addition, we use 
-<insert Miser paper>
+We use as point of reference the Hoard allocator paper \cite{berger00}.
+In addition, we have used the description and discussion of the Miser allocator
+by Intel \cite{miser-intel}.
+
+We proceed to describe the design of our allocator in section \ref{sec:design}. 
+We discuss the decision points in our design and some of the alternatives we 
+consided during both implementation and design in section \ref{sec:alternatives}.
+Section \ref{sec:performance} discusses the performance details of the allocator
+and shows the comparison with other allocators. Finally, section 
+\ref{sec:conclusion} presents our conclusions on this multithreaded allocator.
 
 \newpage
 \section{Allocator Design}
+\label{sec:design}
 
 Insert smart text about the design of our allocator...
 
@@ -75,6 +74,7 @@ are worth mentioning?
 
 \newpage
 \section{Design Alternatives}
+\label{sec:alternatives}
 
 Insert smart text about other features we considered for our allocator...
 
@@ -94,6 +94,7 @@ Should this a subsection of the Design section above?
 
 \newpage
 \section{Performance Analysis}
+\label{sec:performance}
 
 Insert smart text about how well our allocator performs...
 
@@ -116,6 +117,7 @@ fragmentation. Pay significant attention to \textbf{fragmentation} and
 
 \newpage
 \section{Conclusion}
+\label{sec:conclusion}
 
 Insert smart text about how we did awesome... This might take work. :)
 

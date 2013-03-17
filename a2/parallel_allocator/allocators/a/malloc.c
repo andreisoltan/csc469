@@ -530,9 +530,7 @@ void mm_free (void *ptr) {
 
 		//debug_print("%20s|Freeing large block @ %p\n", __func__, mega);
 
-   	    // TODO: Replace this with a call to sb_free_large
-   	    // TODO: After replace, remove locking inside sb_free_large
-   	    linked_list_delete(&large_list, mega);
+		sb_free_large(&large_list, ptr);
 
 		pthread_mutex_unlock(&large_list_lock);
 
@@ -916,10 +914,10 @@ sb_free_large(linked_list_t * list, void * data) {
 	unsigned long i, length;
 	superblock_t *sb;
 
+	// No locking required, since it is done by the callers
+
 	// Get the LL node to work with
 	node = (megablock_t*) ((unsigned long) data) - sizeof(megablock_t);
-
-	pthread_mutex_lock(&large_list_lock);
 
 	// Disconnect the node from the data
 	node->data = NULL;
@@ -928,8 +926,6 @@ sb_free_large(linked_list_t * list, void * data) {
 
 	// Remove the node from the list
 	linked_list_delete(list, node);
-
-	pthread_mutex_unlock(&large_list_lock);
 
 	// TODO: Cut up the newly freed data region into superblocks
 	// and pass them up to the global heap
