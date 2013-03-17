@@ -1,0 +1,86 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 402892 allocs, 5 threads
+area 1: 446698 allocs, 5 threads
+area 2: 401442 allocs, 5 threads
+area 3: 396102 allocs, 4 threads
+area 4: 448894 allocs, 5 threads
+area 5: 397939 allocs, 4 threads
+Throughput =   166152 operations per second.
+Memory used = 2097151 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 401266 allocs, 5 threads
+area 1: 444476 allocs, 5 threads
+area 2: 402373 allocs, 5 threads
+area 3: 397056 allocs, 4 threads
+area 4: 447771 allocs, 5 threads
+area 5: 398860 allocs, 4 threads
+Throughput =   166008 operations per second.
+Memory used = 2101247 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 400303 allocs, 5 threads
+area 1: 443750 allocs, 5 threads
+area 2: 404034 allocs, 5 threads
+area 3: 396252 allocs, 4 threads
+area 4: 447461 allocs, 5 threads
+area 5: 399914 allocs, 4 threads
+Throughput =   166002 operations per second.
+Memory used = 2101247 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 400490 allocs, 5 threads
+area 1: 434854 allocs, 5 threads
+area 2: 402983 allocs, 5 threads
+area 3: 398658 allocs, 4 threads
+area 4: 441175 allocs, 5 threads
+area 5: 399452 allocs, 4 threads
+Throughput =   165063 operations per second.
+Memory used = 2097151 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 403969 allocs, 5 threads
+area 1: 443109 allocs, 5 threads
+area 2: 406265 allocs, 5 threads
+area 3: 400010 allocs, 5 threads
+area 4: 443295 allocs, 5 threads
+area 5: 400363 allocs, 5 threads
+Throughput =   166355 operations per second.
+Memory used = 2097151 bytes

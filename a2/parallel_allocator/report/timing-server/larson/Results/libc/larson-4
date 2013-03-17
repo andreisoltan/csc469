@@ -1,0 +1,46 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 11900000 allocs, 119 threads
+area 1: 7100000 allocs, 71 threads
+area 2: 11800000 allocs, 118 threads
+area 3: 7100000 allocs, 71 threads
+Throughput =  2526654 operations per second.
+Memory used = 1351680 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 11800000 allocs, 118 threads
+area 1: 7100000 allocs, 71 threads
+area 2: 11700000 allocs, 117 threads
+area 3: 7300000 allocs, 73 threads
+Throughput =  2526662 operations per second.
+Memory used = 1351680 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 12000000 allocs, 120 threads
+area 1: 7000000 allocs, 70 threads
+area 2: 11800000 allocs, 118 threads
+area 3: 7200000 allocs, 72 threads
+Throughput =  2533326 operations per second.
+Memory used = 1351680 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 11700000 allocs, 117 threads
+area 1: 7200000 allocs, 72 threads
+area 2: 11700000 allocs, 117 threads
+area 3: 7400000 allocs, 74 threads
+Throughput =  2533323 operations per second.
+Memory used = 1351680 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 11800000 allocs, 118 threads
+area 1: 7200000 allocs, 72 threads
+area 2: 11800000 allocs, 118 threads
+area 3: 7100000 allocs, 71 threads
+Throughput =  2526654 operations per second.
+Memory used = 1351680 bytes

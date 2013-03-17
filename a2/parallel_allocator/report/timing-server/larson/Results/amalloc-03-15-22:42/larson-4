@@ -1,0 +1,54 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10133191 allocs, 102 threads
+area 1: 7460566 allocs, 75 threads
+area 2: 10148154 allocs, 102 threads
+area 3: 9083259 allocs, 91 threads
+Throughput =  2455000 operations per second.
+Memory used = 2809855 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+area 0: 10000000 allocs, 100 threads
+area 1: 8029714 allocs, 81 threads
+area 2: 10000000 allocs, 100 threads
+area 3: 9000000 allocs, 90 threads
+Throughput =  2468636 operations per second.
+Memory used = 2809855 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9900000 allocs, 99 threads
+area 1: 8300000 allocs, 83 threads
+area 2: 10000000 allocs, 100 threads
+area 3: 8900000 allocs, 89 threads
+Throughput =  2473320 operations per second.
+Memory used = 2867199 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9800000 allocs, 98 threads
+area 1: 8600000 allocs, 86 threads
+area 2: 9900000 allocs, 99 threads
+area 3: 8800000 allocs, 88 threads
+Throughput =  2473321 operations per second.
+Memory used = 3219455 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10125124 allocs, 102 threads
+area 1: 7541608 allocs, 76 threads
+area 2: 10139063 allocs, 102 threads
+area 3: 9100000 allocs, 91 threads
+Throughput =  2460378 operations per second.
+Memory used = 2793471 bytes

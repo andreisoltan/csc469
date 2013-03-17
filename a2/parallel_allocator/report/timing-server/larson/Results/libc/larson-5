@@ -1,0 +1,51 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 8800000 allocs, 88 threads
+area 1: 7000000 allocs, 70 threads
+area 2: 8800000 allocs, 88 threads
+area 3: 6900000 allocs, 69 threads
+area 4: 6400000 allocs, 64 threads
+Throughput =  2526655 operations per second.
+Memory used = 1622016 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 8800000 allocs, 88 threads
+area 1: 7000000 allocs, 70 threads
+area 2: 8800000 allocs, 88 threads
+area 3: 6900000 allocs, 69 threads
+area 4: 6400000 allocs, 64 threads
+Throughput =  2526655 operations per second.
+Memory used = 1622016 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 8800000 allocs, 88 threads
+area 1: 6900000 allocs, 69 threads
+area 2: 8700000 allocs, 87 threads
+area 3: 6900000 allocs, 69 threads
+area 4: 6600000 allocs, 66 threads
+Throughput =  2526647 operations per second.
+Memory used = 1622016 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 8900000 allocs, 89 threads
+area 1: 6800000 allocs, 68 threads
+area 2: 8800000 allocs, 88 threads
+area 3: 6800000 allocs, 68 threads
+area 4: 6600000 allocs, 66 threads
+Throughput =  2526646 operations per second.
+Memory used = 1622016 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 8700000 allocs, 87 threads
+area 1: 7000000 allocs, 70 threads
+area 2: 8700000 allocs, 87 threads
+area 3: 6900000 allocs, 69 threads
+area 4: 6600000 allocs, 66 threads
+Throughput =  2526651 operations per second.
+Memory used = 1622016 bytes
