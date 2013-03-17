@@ -10,6 +10,8 @@ program:
 	cd benchmarks/cache-thrash && make
 	cd benchmarks/threadtest && make
 	cd benchmarks/larson && make
+
+variants: program
 	./build-variants.sh
 
 our-tests:
