@@ -1,0 +1,32 @@
+Summary of the lock related actions in our malloc.c
+
+mm_malloc()
+    lock cpu heap
+    sb_get() -- locks returned sb
+    unlock sb
+    unlock cpu heap
+
+mm_free()
+    lock cpu heap
+    lock sb
+    // reinserts sb
+    // updates stats
+    unlock sb
+    // should we relocate to global?
+    sb_find_victim() -- locks returned sb
+    lock global heap
+    unlock sb
+    unlock global heap
+    unlock cpu heap
+
+sb_find_victim()
+    locks sb before removing from heap and returning it
+
+mm_sbrk()
+    locks sbrk lock
+    unlocks sbrk lock
+
+sb_get()
+    lock global heap
+    unlock global heap
+    locks sb before removing from heap and returning it
