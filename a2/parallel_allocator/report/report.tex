@@ -43,8 +43,7 @@ We proceed to describe the design of our allocator in section \ref{sec:design}.
 We discuss the decision points in our design and some of the alternatives we 
 consided during both implementation and design in section \ref{sec:alternatives}.
 Section \ref{sec:performance} discusses the performance details of the allocator
-and shows the comparison with other allocators. Finally, section 
-\ref{sec:conclusion} presents our conclusions on this multithreaded allocator.
+and shows the comparison with other allocators.
 
 \section{Allocator Design}
 \label{sec:design}
@@ -371,6 +370,14 @@ before releasing to global heap), and NSIZES (the number of size classes
 utilized -- increasing in powers of two, we get sizes \{ 0, 8, ... ,
 2\^{}\textsuperscript{NSIZES+1}\}). The following table summarizes the parameters
 used in the various builds.
+
+In our build variations we observe that variations in any one parameter do not 
+have a severe impact on scalability. Lowering the empty fraction or the size of 
+the superblock gave similar number for scalability. However, small sizes for all
+variables can have an impact both on scalability and fragmentation. We believe
+this to be due to the larger number of resulting large allocations, since many 
+allocations might not fit int the 1024 superblock size.
+
 \begin{center}
     \footnotesize
     \begin{tabular}{ | l | c | c | c | c | }
@@ -429,11 +436,6 @@ Describe the memory usage, utilization, overhead, internal and external
 fragmentation. Pay significant attention to \textbf{fragmentation} and 
 \textbf{usage}. Look at Hoard paper, performance section. 
 
-\newpage
-\section{Conclusion}
-\label{sec:conclusion}
-
-Insert smart text about how we did awesome... This might take work. :)
 
 \newpage
 
