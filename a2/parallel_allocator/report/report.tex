@@ -285,6 +285,13 @@ performance.
 Insert smart text about other features we considered for our allocator...
 
 Was there something that would work better but is too hard to develop?
+- Dynamically allocate heap structures on demand (if only 2 CPUs are
+active only have two CPU heaps)
+- No global heap / relocation of pages for single threaded applications
+- Maybe have a heap only for allocator's internal data -- use our malloc
+and free to store structs rather than at head of superblocks?
+- do fullness grouping in a balanced binary tree? large allocations in a
+balance binary tree?
 
 Was there something that was easier to develop but would give slightly slower
 performance?
@@ -306,15 +313,85 @@ Should this a subsection of the Design section above?
 
 Insert smart text about how well our allocator performs...
 
+%%% Can move these around, just dumping them here for now %%%
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5,angle=-90]{timing-server/larson/larson.ps}
+    \caption{Timing server results for 'larson' benchmark}
+    \label{fig:t-larson}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5,angle=-90]{timing-server/cache-thrash/cache-thrash.ps}
+    \caption{Timing server results for 'cache-thrash' benchmark}
+    \label{fig:t-cache-thrash}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5,angle=-90]{timing-server/cache-scratch/cache-scratch.ps}
+    \caption{Timing server results for 'cache-scratch' benchmark}
+    \label{fig:t-cache-scratch}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5,angle=-90]{timing-server/threadtest/threadtest.ps}
+    \caption{Timing server results for 'threadtest' benchmark}
+    \label{fig:t-threadtest}
+\end{figure}
+
 \textbf{MUST HAVE} or we lose marks for not mentioning (from grading rubric)
 \begin{itemize}
-	\item Sequential Speed
+	\item Sequential Speed -- mention that
 	\item Scalability
 	\item False Sharing Avoidance
 	\item Fragmentation
 \end{itemize}
 
 Describe the experimental setup. (Subsection?)
+
+\subsection{Build variations}
+There are a number of parameters built in to our allocator for which we chose
+values based on those discussed in the Hoard paper. We wanted to see if we
+could see any patterns in the performance while varying those parameters. The
+ones we chose to examine were SB\_EMPTYFRAC (emptyness of a heap required
+before releasing a superblock to global heap), SB\_PAGES (size of a superblock
+in pages), SB\_RELTHRESHOLD (free superblocks-worth of space on a heap required
+before releasing to global heap), and NSIZES (the number of size classes
+utilized -- increasing in powers of two, we get sizes \{ 0, 8, ... ,
+2\^{}\textsuperscript{NSIZES+1}\}). The following table summarizes the parameters
+used in the various builds.
+\begin{center}
+    \footnotesize
+    \begin{tabular}{ | l | c | c | c | c | }
+    \hline
+    Build name  & SB\_EMPTYFRAC & SB\_PAGES & SB\_RELTHRESHOLD & Largest size class \\
+    \hline
+    \hline
+    libamalloc-reg  & 0.25 & 2 & 4 & 4096 \\
+    \hline
+    \hline
+    libamalloc-lowfrac  & 0.1 & 2 & 4 & 4096 \\ \hline
+    libamalloc-lowfrac-lowthresh  & 0.1 & 2 & 2 & 4096 \\ \hline
+    libamalloc-lowfrac-lowthresh-smblock  & 0.1 & 2 & 2 & 1024 \\ \hline
+    libamalloc-lowfrac-lowthresh-smsb  & 0.1 & 1 & 2 & 4096 \\ \hline
+    libamalloc-lowfrac-lowthresh-smsb-smblock  & 0.1 & 1 & 2 & 1024 \\ \hline
+    libamalloc-lowfrac-smblock  & 0.1 & 2 & 4 & 1024 \\ \hline
+    libamalloc-lowfrac-smsb  & 0.1 & 1 & 4 & 4096 \\ \hline
+    libamalloc-lowthresh  & 0.25 & 2 & 2 & 4096 \\ \hline
+    libamalloc-lowthresh-smblock & 0.25 & 2 & 2 & 1024 \\ \hline
+    libamalloc-lowthresh-smsb  & 0.25 & 1 & 2 & 4096 \\ \hline
+    libamalloc-lowthresh-smsb-smblock  & 0.25 & 1 & 2 & 1024 \\ \hline
+    libamalloc-smblock & 0.25 & 2 & 4 & 1024 \\ \hline
+    libamalloc-smsb  & 0.25 & 1 & 4 & 4096 \\ \hline
+    libamalloc-smsb-smblock  & 0.25 & 1 & 4 & 1024 \\
+    \hline
+\end{tabular}
+\end{center}
+
+
 
 Describe the performance measurements. \textbf{Must} have plenty of numbers 
 (i.e. not "very few" according to rubric). (Subsection?)
