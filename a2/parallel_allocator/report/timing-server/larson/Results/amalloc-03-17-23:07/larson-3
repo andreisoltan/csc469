@@ -1,0 +1,56 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10401491 allocs, 105 threads
+area 1: 7273852 allocs, 73 threads
+area 2: 10421032 allocs, 105 threads
+Throughput =  1873077 operations per second.
+Memory used = 2129919 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10025514 allocs, 101 threads
+area 1: 7479678 allocs, 75 threads
+area 2: 10208915 allocs, 103 threads
+Throughput =  1847594 operations per second.
+Memory used = 2113535 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10281672 allocs, 103 threads
+area 1: 7469803 allocs, 75 threads
+area 2: 10277917 allocs, 103 threads
+Throughput =  1868616 operations per second.
+Memory used = 2162687 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 10286505 allocs, 103 threads
+area 1: 7256119 allocs, 73 threads
+area 2: 10312633 allocs, 104 threads
+Throughput =  1857002 operations per second.
+Memory used = 2088959 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    thread stopping.
+thread stopping.
+thread stopping.
+area 0: 9926602 allocs, 100 threads
+area 1: 7595074 allocs, 76 threads
+area 2: 10089980 allocs, 101 threads
+Throughput =  1840766 operations per second.
+Memory used = 2555903 bytes
