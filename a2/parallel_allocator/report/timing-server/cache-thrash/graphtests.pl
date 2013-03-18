@@ -4,14 +4,16 @@ use strict;
 
 my $graphtitle = "active-false runtimes";
 
-my @namelist = ("amalloc-03-15-22:42", "libc", "cmu", "kheap");
+my @namelist = ("amalloc-03-17-23:07", "libc", "cmu", "kheap");
+#my @namelist = ("amalloc-03-15-22:42", "libc", "cmu", "kheap");
 #my @namelist = ("libc", "submitted");
 my %names;
 
 # This allows you to give each series a name on the graph
 # that is different from the file or directory names used
 # to collect the data.  We happen to be using the same names.
-$names{"amalloc-03-15-22:42"} = "amalloc";
+$names{"amalloc-03-17-23:07"} = "amalloc";
+#$names{"amalloc-03-15-22:42"} = "amalloc";
 $names{"libc"} = "libc";
 $names{"cmu"} = "cmu";
 $names{"kheap"} = "kheap";

@@ -1,0 +1,16 @@
+
+Running threadtest for 2 threads, 1000 iterations, 420 objects, 10 work and 1 size...
+Time elapsed = 0.647186 seconds
+Memory used = 40959 bytes
+Running threadtest for 2 threads, 1000 iterations, 420 objects, 10 work and 1 size...
+Time elapsed = 0.646839 seconds
+Memory used = 40959 bytes
+Running threadtest for 2 threads, 1000 iterations, 420 objects, 10 work and 1 size...
+Time elapsed = 0.648190 seconds
+Memory used = 40959 bytes
+Running threadtest for 2 threads, 1000 iterations, 420 objects, 10 work and 1 size...
+Time elapsed = 0.646872 seconds
+Memory used = 40959 bytes
+Running threadtest for 2 threads, 1000 iterations, 420 objects, 10 work and 1 size...
+Time elapsed = 0.649283 seconds
+Memory used = 40959 bytes
