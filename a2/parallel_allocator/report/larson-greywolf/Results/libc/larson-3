@@ -1,0 +1,51 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+area 0: 13800000 allocs, 138 threads
+area 1: 10700000 allocs, 107 threads
+area 2: 13500000 allocs, 135 threads
+Throughput =  2533322 operations per second.
+Memory used = 1081344 bytes, required 720000, ratio 1.501867
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+area 0: 13900000 allocs, 139 threads
+area 1: 9800000 allocs, 98 threads
+area 2: 14300000 allocs, 143 threads
+Throughput =  2533322 operations per second.
+Memory used = 1081344 bytes, required 720000, ratio 1.501867
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+area 0: 13400000 allocs, 134 threads
+area 1: 11600000 allocs, 116 threads
+area 2: 12900000 allocs, 129 threads
+Throughput =  2526656 operations per second.
+Memory used = 1081344 bytes, required 720000, ratio 1.501867
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+area 0: 13600000 allocs, 136 threads
+area 1: 9600000 allocs, 96 threads
+area 2: 14800000 allocs, 148 threads
+Throughput =  2533322 operations per second.
+Memory used = 1081344 bytes, required 720000, ratio 1.501867
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+area 0: 11100000 allocs, 111 threads
+area 1: 15100000 allocs, 151 threads
+area 2: 11800000 allocs, 118 threads
+Throughput =  2533322 operations per second.
+Memory used = 1081344 bytes, required 720000, ratio 1.501867
+Done sleeping...

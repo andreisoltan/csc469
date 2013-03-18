@@ -1,0 +1,46 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+area 0: 6639082 allocs, 67 threads
+Throughput =   442603 operations per second.
+Memory used = 421887 bytes, required 240000, ratio 1.757863
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+area 0: 6485310 allocs, 65 threads
+Throughput =   432352 operations per second.
+Memory used = 421887 bytes, required 240000, ratio 1.757863
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+area 0: 5754449 allocs, 58 threads
+Throughput =   383628 operations per second.
+Memory used = 421887 bytes, required 240000, ratio 1.757863
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+area 0: 5776049 allocs, 58 threads
+Throughput =   385068 operations per second.
+Memory used = 421887 bytes, required 240000, ratio 1.757863
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+area 0: 6640521 allocs, 67 threads
+Throughput =   442699 operations per second.
+Memory used = 421887 bytes, required 240000, ratio 1.757863
+Done sleeping...

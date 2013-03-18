@@ -1,0 +1,48 @@
+i = 1, memory used: 405504 avg, 405504 min, 405504 max
+i = 2, memory used: 675840 avg, 675840 min, 675840 max
+i = 3, memory used: 1081344 avg, 1081344 min, 1081344 max
+i = 4, memory used: 1351680 avg, 1351680 min, 1351680 max
+i = 5, memory used: 1622016 avg, 1622016 min, 1622016 max
+i = 6, memory used: 2027520 avg, 2027520 min, 2027520 max
+i = 7, memory used: 2297856 avg, 2297856 min, 2297856 max
+i = 8, memory used: 2568192 avg, 2568192 min, 2568192 max
+i = 1, memory used: 372735 avg, 372735 min, 372735 max
+i = 2, memory used: 720895 avg, 720895 min, 720895 max
+i = 3, memory used: 1070693.4 avg, 1069055 min, 1073151 max
+i = 4, memory used: 1415576.6 avg, 1413119 min, 1417215 max
+i = 5, memory used: 1761279 avg, 1757183 min, 1765375 max
+i = 6, memory used: 2103704.6 avg, 2101247 min, 2105343 max
+i = 7, memory used: 2451864.6 avg, 2449407 min, 2457599 max
+i = 8, memory used: 2800843.8 avg, 2797567 min, 2809855 max
+i = 1, memory used: 421887 avg, 421887 min, 421887 max
+i = 2, memory used: 835583 avg, 835583 min, 835583 max
+i = 3, memory used: 1247640.6 avg, 1245183 min, 1249279 max
+i = 4, memory used: 1659698.2 avg, 1658879 min, 1662975 max
+i = 5, memory used: 2071755.8 avg, 2068479 min, 2072575 max
+i = 6, memory used: 2485451.8 avg, 2482175 min, 2486271 max
+i = 7, memory used: 2895871 avg, 2895871 min, 2895871 max
+i = 8, memory used: 3305471 avg, 3301375 min, 3309567 max
+i = 1, memory used: 591461.4 avg, 434175 min, 827391 max
+i = 2, memory used: 1499135 avg, 1171455 min, 2318335 max
+i = 3, memory used: 2804939.8 avg, 2064383 min, 3735551 max
+i = 4, memory used: 3384933.4 avg, 2793471 min, 4923391 max
+i = 5, memory used: 3971480.6 avg, 3514367 min, 5332991 max
+i = 6, memory used: 6047333.4 avg, 4325375 min, 7503871 max
+i = 7, memory used: 7261387.8 avg, 5095423 min, 8855551 max
+i = 8, memory used: 6945176.6 avg, 5816319 min, 9019391 max
+name = libc
+	scalability score 0.265
+	fragmentation score = 1.434
+
+name = kheap
+	scalability score 0.126
+	fragmentation score = 1.483
+
+name = cmu
+	scalability score 0.057
+	fragmentation score = 1.732
+
+name = amalloc
+	scalability score 0.207
+	fragmentation score = 3.557
+

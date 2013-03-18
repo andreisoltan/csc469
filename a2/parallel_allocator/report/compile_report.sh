@@ -9,6 +9,10 @@ pushd timing-server
     done
 popd
 
+## Generate larson-greywolf plot ################
+pushd larson-greywolf
+    ./graphtests.pl >| out
+popd
 
 ## Compile latex doc ############################
 latex report.tex

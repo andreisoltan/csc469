@@ -1,0 +1,66 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 4683972 allocs, 47 threads
+area 1: 3890794 allocs, 39 threads
+area 2: 5793445 allocs, 58 threads
+Throughput =   955878 operations per second.
+Memory used = 2105343 bytes, required 720000, ratio 2.924088
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 5917972 allocs, 60 threads
+area 1: 4254460 allocs, 43 threads
+area 2: 5247614 allocs, 53 threads
+Throughput =  1026856 operations per second.
+Memory used = 3735551 bytes, required 720000, ratio 5.188265
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 5661599 allocs, 57 threads
+area 1: 3757315 allocs, 38 threads
+area 2: 5422487 allocs, 55 threads
+Throughput =   988637 operations per second.
+Memory used = 3588095 bytes, required 720000, ratio 4.983465
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 5786051 allocs, 58 threads
+area 1: 4173162 allocs, 42 threads
+area 2: 5711629 allocs, 58 threads
+Throughput =  1043738 operations per second.
+Memory used = 2531327 bytes, required 720000, ratio 3.515732
+Done sleeping...
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    
+thread stopping.
+thread stopping.
+thread stopping.
+area 0: 5342478 allocs, 54 threads
+area 1: 3736315 allocs, 38 threads
+area 2: 5291886 allocs, 53 threads
+Throughput =   956457 operations per second.
+Memory used = 2064383 bytes, required 720000, ratio 2.867199
+Done sleeping...
