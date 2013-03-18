@@ -46,3 +46,21 @@ clean:
 
 clean-results:
 	rm -rfv benchmarks/*/Results
+
+report: .FORCE
+	cd report && rm -f report.pdf && ./compile_report.sh
+
+a2.tgz: report
+	cp allocators/a/malloc.c malloc.c
+	cp report/report.pdf report.pdf
+	tar -hczvf $@ \
+		malloc.c \
+		report.pdf
+	rm -f malloc.c report.pdf
+
+submit: a2.tgz
+	echo "\nTo submit, execute 'submit -c csc469h -a a2 a2.tgz'"
+
+.FORCE:
+
+
