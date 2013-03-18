@@ -46,7 +46,6 @@ Section \ref{sec:performance} discusses the performance details of the allocator
 and shows the comparison with other allocators. Finally, section 
 \ref{sec:conclusion} presents our conclusions on this multithreaded allocator.
 
-\newpage
 \section{Allocator Design}
 \label{sec:design}
 
@@ -222,17 +221,32 @@ logic. We prefer to release from size class 0, the empty superblocks. If none
 are available there, we look at each size class' emptyish list taking the
 first one that we encounter.
 
-Was there something we did to boost performance? (mention memory usage, 
-processing, internal and external fragmentation (with no numbers?))
-
-What other questions do we want to answer or design decisions that we think
-are worth mentioning?
 
 \newpage
 \section{Design Alternatives}
 \label{sec:alternatives}
 
 \subsection{Fullness groups}
+In an attempt at improving memory fragmentation and usage, we have decided to
+implement fullness groups. This is similar to how Hoard handles heaps that
+are mostly empty. We keep track of the usage statistics similar to the Hoard
+paper, which include the number of used bytes and the number of allocated bytes.
+The one difference from the original Hoard is that we group the blocks into 
+fullness groups, as described above. This allows for faster lookup when 
+allocating and transferring memory between heaps. When allocating we select 
+blocks that are moslty full, and when passing blocks to the global heap, we 
+select only ones that are empty.
+
+The memory and processing overhead are justified, since they allow for 
+optimizations in several parts of the code. We benefit from this when 
+allocating, freeing memory and overall in the fragmentation and usage of the 
+acquired memory. The alternative would imply that often times blocks will be
+underutilized, since we will not try to fill the fullest ones first. It would
+also mean that empty blocks would stay in one heap where they might not be 
+used for a long time. After these considerations, the implementation and 
+runtime overhead are justified, especially when we reach many allocation and 
+free operations.
+
 
 \subsection{Large allocation}
 The implementation of the large allocations was substatially different from
@@ -282,30 +296,17 @@ point of failure and more bugs. So, we have decided to pay the developments
 cost, together with some price for processing, in order to improve memory
 performance.
 
-Insert smart text about other features we considered for our allocator...
-
-Was there something that would work better but is too hard to develop?
-- Dynamically allocate heap structures on demand (if only 2 CPUs are
-active only have two CPU heaps)
-- No global heap / relocation of pages for single threaded applications
-- Maybe have a heap only for allocator's internal data -- use our malloc
-and free to store structs rather than at head of superblocks?
-- do fullness grouping in a balanced binary tree? large allocations in a
-balance binary tree?
-
-Was there something that was easier to develop but would give slightly slower
-performance?
-
-Was there something we tried, but found that it wouldn't work well (or took too 
-much time/effort), and decided in favor of a simpler solution?
-
-Was there something we did, avoided or fixed to have good performance?
-
-Did we decided in favor or against something regarding fragmentation?
-
-Should this a subsection of the Design section above?
-
-
+While implementing the feature of moving the superblocks from recently freed 
+allocations up to the global heap, we have considered the possibility of an 
+additional improvement. This option included looking up contiguous blocks
+of memory to satisfy the request for large segment allocations. The rationale
+behind this, is that a recently freed large allocation could be reused, instead
+of requesting additional memory using mem\_sbrk. The implementation of this 
+feature would required additional computations when acquiring large blocks.
+Moreover, these computations are not guaranteed to provide a satisfying 
+solution, which would make them detrimental to the large allocation process.
+The additional implementation time, the risk of slowed allocations, and the 
+possibility of additional bugs made this feature undesirable.
 
 \newpage
 \section{Performance Analysis}
