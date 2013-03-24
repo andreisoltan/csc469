@@ -2,11 +2,13 @@
 # CSC469 Winter 2013, A3 Makefile ########################################
 ##########################################################################
 
-ME = $(shell who am i | cut -f1 -d' ')
-KILL_CMD = killall -v -u $(ME)
+SHELL = bash
+ME := $(shell who am i | cut -f1 -d' ')
+KILL_CMD := killall -v -u $(ME)
+QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ')
 
 CC = gcc
-CFLAGS = -Wall -g # -DUSE_LOCN_SERVER
+CFLAGS = -Wall -g -DDEBUG # -DUSE_LOCN_SERVER
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
@@ -15,10 +17,12 @@ CLIENT_BIN = $(CHATCLIENT_BIN) receiver
 CLIENT_OBJS = client_main.o client_util.o 
 RECVR_OBJS = client_recv.o client_util.o
 
-TCP_PORT = 10987
+TCP_PORT = 49155
 UDP_PORT = $(TCP_PORT)
 TEST_NAME = testy_mctesterson
 HOST_NAME = 127.0.0.1
+
+##########################################################################
 
 all: $(SERVER_BIN) $(CLIENT_BIN)
 
@@ -41,6 +45,8 @@ clean:
 	rm -f *.o $(SERVER_BIN) $(CLIENT_BIN) core
 
 ###########################################################################
+# testing targets (for running locally)
+###########################################################################
 
 run-server: $(SERVER_BIN)
 	./$(SERVER_BIN) -t $(TCP_PORT) -u $(UDP_PORT) &
@@ -58,10 +64,9 @@ kill-server:
 kill-client:
 	$(KILL_CMD) $(CHATCLIENT_BIN)
 
-kill-both: kill-server kill-client
+kill-both:
+	make kill-server ; make kill-client
 
-###########################################################################
-
-handin:
-	cp chatclient.tar $(ASSTDIR)/handin/$(NAME)-chatclient-$(VERSION).tar
+clean-queues:
+	ipcrm -q $(QUEUES)
 
