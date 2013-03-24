@@ -55,6 +55,8 @@ name_t myname = {
 // Size of a superblock in pages
 #ifdef OPT_SMALL_SB
     #define SB_PAGES 1
+    // Our superblocks are small, so must be our block size limit
+    #define OPT_SM_BLOCK_LIMIT
 #else
     #define SB_PAGES 2
 #endif
@@ -256,8 +258,8 @@ int mm_init (void) {
     superblock_t *sb = NULL;
     freelist_t *fl = NULL;
 
-    //debug_print("\n%20s|entry; sizeof(heap_t): %d, sizeof(superblock_t): %d\n",
-    //    __func__, sizeof(heap_t), sizeof(superblock_t));
+    debug_print("\n%20s|entry; sizeof(heap_t): %d, sizeof(superblock_t): %d\n",
+        __func__, sizeof(heap_t), sizeof(superblock_t));
 
     if (dseg_lo == NULL && dseg_hi == NULL) {
 
