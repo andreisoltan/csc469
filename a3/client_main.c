@@ -19,6 +19,7 @@
 #include <netdb.h>
 
 #include "client.h"
+#include "defs.h"
 #include <errno.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -26,6 +27,19 @@
 /*************** GLOBAL VARIABLES ******************/
 
 static char *option_string = "h:t:u:n:";
+
+char *buf;
+
+/*
+ * For TCP connection with server
+ */
+int tcp_sock;
+#define PORT_STR_LEN 10
+char server_tcp_port_str[PORT_STR_LEN];
+struct addrinfo hints;
+struct addrinfo *ai_result;
+struct control_msghdr *cmh; /* common header pointer */
+
 
 /* For communication with chat server */
 /* These variables provide some extra clues about what you will need to
@@ -103,6 +117,8 @@ void shutdown_clean() {
     if (msgctl(ctrl2rcvr_qid, IPC_RMID, NULL)) {
         perror("cleanup - msgctl removal failed");
     }
+
+    free(buf);
 
     exit(0);
 }
@@ -240,6 +256,38 @@ int create_receiver()
     return 0;
 }
 
+void open_tcp() {
+
+    int status;
+
+    /********************************************
+     * Do TCP connection setup
+     */
+
+    /* get addr info */
+    if ((status = getaddrinfo(server_host_name, server_tcp_port_str,
+        &hints, &ai_result)) != 0) {
+        err_quit("getaddrinfo: %s\n", gai_strerror(status));
+    }
+
+    /* get socket descriptor */
+    if ((tcp_sock = socket(ai_result->ai_family, ai_result->ai_socktype,
+        ai_result->ai_protocol)) == -1) {
+        err_quit("tcp socket(): %s\n", strerror(errno));
+    }
+
+    if ((connect(tcp_sock, ai_result->ai_addr, ai_result->ai_addrlen))
+        == -1) {
+        err_quit("connect: %s\n", strerror(errno));
+    }
+
+}
+
+void close_tcp() {
+    close(tcp_sock); 
+    freeaddrinfo(ai_result);
+}
+
 
 /*********************************************************************/
 
@@ -247,10 +295,86 @@ int create_receiver()
 * control message request from the chat client to the chat server.
 * These functions should return 0 on success, and a negative number 
 * on error.
+*
+* These functions all assume that buf points to a block of memory at
+* least MAX_MSG_LEN in size.
 */
+
 
 int handle_register_req()
 {
+
+    int bytes;
+
+    /*register data area pointer */
+    struct register_msgdata *rdata;
+
+    open_tcp();
+
+    /********************************************
+     * Register with chat server
+     */
+    debug_sub_print(DBG_TCP, "%s: Registering with server...\n",
+        __func__);
+
+    /* Construct a REGISTER_REQUEST ************/
+
+    /* initialize the block to all 0 */
+    memset(buf, 0, MAX_MSG_LEN);
+
+    /* message type */
+    cmh->msg_type = REGISTER_REQUEST;
+
+    /* rdata points to the data area */
+    rdata = (struct register_msgdata *)cmh->msgdata;
+
+/* TODO: not this */
+#define TMP_PORT 7777
+
+    /* udp port: required */
+    rdata->udp_port = htons(TMP_PORT);
+
+    /* member name */
+    strcpy((char *)rdata->member_name, member_name);
+
+    /* message length */
+    cmh->msg_len = sizeof(struct control_msghdr) +
+      sizeof(struct register_msgdata) +
+      strlen(member_name);
+
+    /* send the message */
+    if ((bytes = write(tcp_sock, buf, cmh->msg_len)) == -1) {
+        err_quit("%s: write: %s\n", __func__, strerror(errno));
+    }
+
+    debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
+
+    /* wait for, receive a response */
+    if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) {
+        err_quit("%s: recv'd: %s\n", __func__, strerror(errno));
+    }
+
+    debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
+
+    switch (cmh->msg_type) {
+        case REGISTER_SUCC:
+            // TODO: something...
+            debug_sub_print(DBG_TCP, "%s: REGISTER_SUCC as member #%d\n",
+                __func__, cmh->member_id);
+            member_id = cmh->member_id;
+            break;
+        case REGISTER_FAIL:
+            // TODO: change name, reconnect?
+            err_quit("%s: REGISTER_FAIL: %s\n", __func__,
+                (char *) (cmh->msgdata));
+            break;
+        default:
+            err_quit("%s: REGISTER_REQUEST returned %d\n",
+                __func__, cmh->msg_type);
+            break;
+    }
+    
+    close_tcp();
 
     return 0;
 }
@@ -287,13 +411,30 @@ int handle_quit_req()
 }
 
 
+
+/*
+ * Set up the client before accepting input.
+ */
 int init_client()
 {
-    /* Initialize client so that it is ready to start exchanging messages
-    * with the chat server.
-    *
-    * YOUR CODE HERE
-    */
+   
+    
+    /* Make room for message buffer */
+    if ((buf = (char *)malloc(MAX_MSG_LEN)) == 0) {
+        err_quit("%s: malloc failed\n", __func__);
+    }
+
+    /* by casting, cmh points to the beginning of the memory block, and header
+    * field values can then be directly assigned */
+    cmh = (struct control_msghdr *)buf;
+    
+    /* set up connection hints */
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    /* stringify server port for getaddrinfo */
+    sprintf(server_tcp_port_str, "%d", server_tcp_port);
 
 #ifdef USE_LOCN_SERVER
 
@@ -303,18 +444,20 @@ int init_client()
 
 #endif
 
-    /* 1. initialization to allow TCP-based control messages to chat server */
+    /********************************************
+     * Initialization to allow UDP-based chat messages to chat server 
+     */
+    debug_sub_print(DBG_UDP, "%s: Should init UDP here...\n", __func__);
 
 
-    /* 2. initialization to allow UDP-based chat messages to chat server */
+    /********************************************
+     * Spawn receiver process - see create_receiver() in this file.
+     */
+    debug_sub_print(DBG_RCV, "%s: Should init receiver process here...\n",
+        __func__);
 
-
-    /* 3. spawn receiver process - see create_receiver() in this file. */
-
-
-    /* 4. register with chat server */
-
-
+    /** Send register request ******************/
+    handle_register_req();
 
     return 0;
 
@@ -366,11 +509,12 @@ void handle_command_input(char *line)
     /* 1. Simple format check */
 
     switch(cmd) {
-
+// TODO: change name
     case 'r':
     case 'q':
         if (strlen(line) != 0) {
-            printf("Error in command format: !%c should not be followed by anything.\n",cmd);
+            printf("Error in command format: !%c should not be followed "
+                "by anything.\n",cmd);
             return;
         }
         break;
@@ -382,7 +526,8 @@ void handle_command_input(char *line)
             int allowed_len = MAX_ROOM_NAME_LEN;
 
             if (line[0] != ' ') {
-                printf("Error in command format: !%c should be followed by a space and a room name.\n",cmd);
+                printf("Error in command format: !%c should be followed "
+                    "by a space and a room name.\n",cmd);
                 return;
             }
             line++; /* skip space before room name */
@@ -390,11 +535,13 @@ void handle_command_input(char *line)
             len = strlen(line);
             goodlen = strcspn(line, " \t\n"); /* Any more whitespace in line? */
             if (len != goodlen) {
-                printf("Error in command format: line contains extra whitespace (space, tab or carriage return)\n");
+                printf("Error in command format: line contains extra "
+                    "whitespace (space, tab or carriage return)\n");
                 return;
             }
             if (len > allowed_len) {
-                printf("Error in command format: name must not exceed %d characters.\n",allowed_len);
+                printf("Error in command format: name must not exceed %d "
+                    "characters.\n",allowed_len);
                 return;
             }
         }
@@ -436,7 +583,7 @@ void handle_command_input(char *line)
     }
 
     /* Currently, we ignore the result of command handling.
-    * You may want to change that.
+    * TODO: You may want to change that.
     */
 
     return;

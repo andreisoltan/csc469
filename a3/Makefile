@@ -8,7 +8,7 @@ KILL_CMD := killall -v -u $(ME)
 QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ')
 
 CC = gcc
-CFLAGS = -Wall -g -DDEBUG # -DUSE_LOCN_SERVER
+CFLAGS = -Wall -g -DDEBUG -DDBG_TCP # -DDBG_UDP -DDBG_RCV -DUSE_LOCN_SERVER
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
@@ -20,7 +20,7 @@ RECVR_OBJS = client_recv.o client_util.o
 TCP_PORT = 49155
 UDP_PORT = $(TCP_PORT)
 TEST_NAME = testy_mctesterson
-HOST_NAME = 127.0.0.1
+HOST_NAME = localhost
 
 ##########################################################################
 
@@ -53,7 +53,7 @@ run-server: $(SERVER_BIN)
 	
 run-client: $(CHATCLIENT_BIN)
 	./$(CHATCLIENT_BIN) \
-	  -h $(HOST_NAME) -t $(TCP_PORT) -u $(UDP_PORT) -n $(TEST_NAME) &
+	  -h $(HOST_NAME) -t $(TCP_PORT) -u $(UDP_PORT) -n $(TEST_NAME)
 
 run-both:
 	make run-server && sleep 2 && make run-client

@@ -25,29 +25,40 @@
 
 /* debug junk *******************************************************/
 
+/* Flags for debug printing. Define more as needed. */
 #ifndef DEBUG
-#define DEBUG 0 
+    #define DEBUG 0
+#endif
+#ifndef DBG_TCP
+    #define DBG_TCP 0
+#endif
+#ifndef DBG_UDP
+    #define DBG_UDP 0
+#endif
+#ifndef DBG_RCV
+    #define DBG_RCV 0
 #endif
 
-// Susbsystem flags for debug_sub_print. Define more as needed.
-#define DBG_TCP 0
-#define DBG_UDP 0
-#define DBG_CLI_RECV 0
-#define DBG_CLI_MAIN 0
-
-// The debug_print macro is borrowed from Jonathan Leffler, here:
-// http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
-#define debug_print(...) \
-    do { if (DEBUG) fprintf(stderr, ##__VA_ARGS__); } while (0)
-
-// This one is modified to include a check for a subsystem-specific
-// flag, e.g.: debug_sub_print(DBG_TCP, "oh, wow, TCP happened!\n");
+/*
+ * The debug_print macro is borrowed from Jonathan Leffler, here:
+ *   http://stackoverflow.com/questions/1644868/c-define-macro-for-debug-printing
+ *
+ * Besides the DEBUG macro, this one check an additional user supplied
+ * conditional -- for instance a subsystem specific flag, e.g.:
+ *   debug_sub_print(DBG_TCP, "oh, wow, TCP happened!\n");
+ */
 #define debug_sub_print(sub_sys, ...) \
     do { if ((DEBUG) && (sub_sys)) \
         fprintf(stderr, ##__VA_ARGS__); } while (0)
 
+/* Plain debug_print -- only checks for definition of DEBUG */
+#define debug_print(...) debug_sub_print(DEBUG, ##__VA_ARGS__) ;
+
 /* END debug junk ***************************************************/
 
+#define err_quit(...) \
+    fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
+    exit(1);
 
 /*** Defines for client control <--> receiver communication ***/
 
