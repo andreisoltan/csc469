@@ -79,7 +79,8 @@ int ctrl2rcvr_qid;
 #define SEND_BUF() \
     if ((bytes = write(tcp_sock, buf, cmh->msg_len)) == -1) { \
         err_quit("%s: write: %s\n", __func__, strerror(errno)); \
-    }
+    } \
+    debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
 
 /*
  * Receive command/check common to all handle_XXX functions
@@ -87,7 +88,9 @@ int ctrl2rcvr_qid;
 #define RECV_BUF() \
     if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) { \
         err_quit("%s: recv'd: %s\n", __func__, strerror(errno)); \
-    }
+    } \
+    debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
+
 
 #define err_quit(...) \
     fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
@@ -365,18 +368,14 @@ int handle_register_req()
     /* Contact server, send the message */
     open_tcp();
     SEND_BUF();
-    debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
 
     /* Catch reply */
     RECV_BUF();
-    debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
 
     switch (cmh->msg_type) {
         case REGISTER_SUCC:
-            // TODO: something...
-            debug_sub_print(DBG_TCP, "%s: REGISTER_SUCC as member #%d\n",
-                __func__, cmh->member_id);
-            member_id = cmh->member_id;
+            printf("Successfully registered '%s' as member #%d\n",
+                member_name, (member_id = cmh->member_id));
             break;
         case REGISTER_FAIL:
             // TODO: change name, reconnect?
