@@ -33,7 +33,7 @@ char *buf;
 /*
  * For TCP connection with server
  */
-int tcp_sock;
+int tcp_sock, bytes;
 #define PORT_STR_LEN 10
 char server_tcp_port_str[PORT_STR_LEN];
 struct addrinfo hints;
@@ -73,6 +73,26 @@ int ctrl2rcvr_qid;
  */
 #define MAX_MSGDATA (MAX_MSG_LEN - sizeof(struct chat_msghdr))
 
+/*
+ * Send command/check common to all handle_XXX functions
+ */
+#define SEND_BUF() \
+    if ((bytes = write(tcp_sock, buf, cmh->msg_len)) == -1) { \
+        err_quit("%s: write: %s\n", __func__, strerror(errno)); \
+    }
+
+/*
+ * Receive command/check common to all handle_XXX functions
+ */
+#define RECV_BUF() \
+    if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) { \
+        err_quit("%s: recv'd: %s\n", __func__, strerror(errno)); \
+    }
+
+#define err_quit(...) \
+    fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
+    shutdown_clean(1);
+
 
 /************* FUNCTION DEFINITIONS ***********/
 
@@ -91,36 +111,38 @@ static void usage(char **argv) {
 }
 
 
-
-void shutdown_clean() {
+// TODO: This
+void shutdown_clean(int ret) {
     /* Function to clean up after ourselves on exit, freeing any used resources */
 
     /* Add to this function to clean up any additional resources that you
      * might allocate.
      */
 
-    msg_t msg;
+//    msg_t msg;
 
     /* 1. Send message to receiver to quit */
+/*
     msg.mtype = RECV_TYPE;
     msg.body.status = CHAT_QUIT;
     msgsnd(ctrl2rcvr_qid, &msg, sizeof(struct body_s), 0);
-
+*/
     /* 2. Close open fd's */
-    close(udp_socket_fd);
+//    close(udp_socket_fd);
 
     /* 3. Wait for receiver to exit */
-    waitpid(receiver_pid, 0, 0);
+//    waitpid(receiver_pid, 0, 0);
 
     /* 4. Destroy message channel */
+/*
     unlink(ctrl2rcvr_fname);
     if (msgctl(ctrl2rcvr_qid, IPC_RMID, NULL)) {
         perror("cleanup - msgctl removal failed");
     }
-
+*/
     free(buf);
 
-    exit(0);
+    exit(ret);
 }
 
 
@@ -304,12 +326,10 @@ void close_tcp() {
 int handle_register_req()
 {
 
-    int bytes;
 
     /*register data area pointer */
     struct register_msgdata *rdata;
 
-    open_tcp();
 
     /********************************************
      * Register with chat server
@@ -342,18 +362,13 @@ int handle_register_req()
       sizeof(struct register_msgdata) +
       strlen(member_name);
 
-    /* send the message */
-    if ((bytes = write(tcp_sock, buf, cmh->msg_len)) == -1) {
-        err_quit("%s: write: %s\n", __func__, strerror(errno));
-    }
-
+    /* Contact server, send the message */
+    open_tcp();
+    SEND_BUF();
     debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
 
-    /* wait for, receive a response */
-    if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) {
-        err_quit("%s: recv'd: %s\n", __func__, strerror(errno));
-    }
-
+    /* Catch reply */
+    RECV_BUF();
     debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
 
     switch (cmh->msg_type) {
@@ -375,41 +390,160 @@ int handle_register_req()
     }
     
     close_tcp();
-
     return 0;
 }
 
 int handle_room_list_req()
 {
+    
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = ROOM_LIST_REQUEST;
+    cmh->member_id = member_id;
+    cmh->msg_len = sizeof(struct control_msghdr);
 
+    /* Open connection, send request */
+    open_tcp();
+    SEND_BUF();
+
+    /* Catch, handle response */
+    RECV_BUF();
+
+    switch (cmh->msg_type) {
+        case ROOM_LIST_SUCC:
+            printf("%s\n", (char *) (cmh->msgdata));
+            break;
+        case ROOM_LIST_FAIL:
+            printf("Could not list rooms: %s\n", (char *) (cmh->msgdata)); 
+            break;
+        default:
+            err_quit("%s: ROOM_LIST_REQUEST returned %d\n",
+                __func__, cmh->msg_type);
+            break;
+    }
+
+    close_tcp();
     return 0;
 }
 
 int handle_member_list_req(char *room_name)
 {
 
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = MEMBER_LIST_REQUEST;
+    cmh->member_id = member_id;
+    strcpy((char *)(cmh->msgdata), room_name);
+    cmh->msg_len = sizeof(struct control_msghdr) +
+        strlen(room_name);
+
+    open_tcp();
+    SEND_BUF();
+
+    /* Catch, handle response */
+    RECV_BUF();
+    switch (cmh->msg_type) {
+        case MEMBER_LIST_SUCC:
+            printf("%s\n", (char *) (cmh->msgdata));
+            break;
+        case MEMBER_LIST_FAIL:
+            printf("Could not list members in room '%s': %s\n",
+                room_name, (char *) (cmh->msgdata));
+            break;
+        default:
+            err_quit("%s: MEMBER_LIST_REQUEST returned %d\n",
+                __func__, cmh->msg_type);
+            break;
+    }
+
+    close_tcp();
     return 0;
 }
 
 int handle_switch_room_req(char *room_name)
 {
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = SWITCH_ROOM_REQUEST;
+    cmh->member_id = member_id;
+    strcpy((char *)(cmh->msgdata), room_name);
+    cmh->msg_len = sizeof(struct control_msghdr) +
+        strlen(room_name);
 
+    open_tcp();
+    SEND_BUF();
+
+    /* Catch, handle response */
+    RECV_BUF();
+    switch (cmh->msg_type) {
+        case SWITCH_ROOM_SUCC:
+            printf("Switched to room '%s'\n", room_name);
+            break;
+        case SWITCH_ROOM_FAIL:
+            printf("Could not switch to room '%s': %s\n",
+                room_name, (char *) (cmh->msgdata));
+            break;
+        default:
+            err_quit("%s: SWITCH_ROOM_REQUEST returned %d\n",
+                __func__, cmh->msg_type);
+            break;
+    }
+
+    close_tcp();
     return 0;
 }
 
 int handle_create_room_req(char *room_name)
 {
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = CREATE_ROOM_REQUEST;
+    cmh->member_id = member_id;
+    strcpy((char *)(cmh->msgdata), room_name);
+    cmh->msg_len = sizeof(struct control_msghdr) +
+        strlen(room_name);
 
+    open_tcp();
+    SEND_BUF();
+
+    /* Catch, handle response */
+    RECV_BUF();
+    switch (cmh->msg_type) {
+        case CREATE_ROOM_SUCC:
+            printf("Room '%s' created.\n", room_name);
+            break;
+        case CREATE_ROOM_FAIL:
+            printf("Could not create room '%s': %s\n",
+                room_name, (char *) (cmh->msgdata));
+            break;
+        default:
+            err_quit("%s: CREATE_ROOM_REQUEST returned %d\n",
+                __func__, cmh->msg_type);
+            break;
+    }
+
+    close_tcp();
     return 0;
 }
 
 
 int handle_quit_req()
 {
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = QUIT_REQUEST;
+    cmh->member_id = member_id;
+    cmh->msg_len = sizeof(struct control_msghdr);
 
+    open_tcp();
+    SEND_BUF();
+    close_tcp();
+
+    printf("Quitting server.\n");
+
+    shutdown_clean(0); /* exits */
     return 0;
 }
-
 
 
 /*
@@ -476,8 +610,7 @@ void handle_chatmsg_input(char *inputdata)
 
     if (buf == 0) {
         printf("Could not malloc memory for message buffer\n");
-        shutdown_clean();
-        exit(1);
+        shutdown_clean(1);
     }
 
     bzero(buf, MAX_MSG_LEN);

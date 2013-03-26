@@ -56,10 +56,6 @@
 
 /* END debug junk ***************************************************/
 
-#define err_quit(...) \
-    fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
-    exit(1);
-
 /*** Defines for client control <--> receiver communication ***/
 
 struct body_s {

@@ -49,7 +49,7 @@ clean:
 ###########################################################################
 
 run-server: $(SERVER_BIN)
-	./$(SERVER_BIN) -t $(TCP_PORT) -u $(UDP_PORT) &
+	./$(SERVER_BIN) -t $(TCP_PORT) -u $(UDP_PORT) -r room.cfg &
 	
 run-client: $(CHATCLIENT_BIN)
 	./$(CHATCLIENT_BIN) \
