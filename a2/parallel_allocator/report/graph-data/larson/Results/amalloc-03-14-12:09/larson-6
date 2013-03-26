@@ -1,0 +1,56 @@
+
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9700000 allocs, 97 threads
+area 1: 6500000 allocs, 65 threads
+area 2: 4400000 allocs, 44 threads
+area 3: 2900000 allocs, 29 threads
+area 4: 4300000 allocs, 43 threads
+area 5: 9300000 allocs, 93 threads
+Throughput =  2473321 operations per second.
+Memory used = 4038655 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9700000 allocs, 97 threads
+area 1: 6500000 allocs, 65 threads
+area 2: 4400000 allocs, 44 threads
+area 3: 2900000 allocs, 29 threads
+area 4: 4300000 allocs, 43 threads
+area 5: 9300000 allocs, 93 threads
+Throughput =  2473312 operations per second.
+Memory used = 4038655 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9700000 allocs, 97 threads
+area 1: 6500000 allocs, 65 threads
+area 2: 4400000 allocs, 44 threads
+area 3: 2900000 allocs, 29 threads
+area 4: 4300000 allocs, 43 threads
+area 5: 9200000 allocs, 92 threads
+Throughput =  2466646 operations per second.
+Memory used = 4038655 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9700000 allocs, 97 threads
+area 1: 6500000 allocs, 65 threads
+area 2: 4400000 allocs, 44 threads
+area 3: 2900000 allocs, 29 threads
+area 4: 4300000 allocs, 43 threads
+area 5: 9200000 allocs, 92 threads
+Throughput =  2466635 operations per second.
+Memory used = 4038655 bytes
+
+Multi-threaded test driver 
+C version (malloc and free)
+runtime (sec): chunk size (min,max): threads (min, max):   chunks/thread:  no of rounds:   random seed:    area 0: 9700000 allocs, 97 threads
+area 1: 6500000 allocs, 65 threads
+area 2: 4400000 allocs, 44 threads
+area 3: 2900000 allocs, 29 threads
+area 4: 4300000 allocs, 43 threads
+area 5: 9300000 allocs, 93 threads
+Throughput =  2473318 operations per second.
+Memory used = 4038655 bytes
