@@ -34,11 +34,18 @@ char *buf;
  * For TCP connection with server
  */
 int tcp_sock, bytes;
-#define PORT_STR_LEN 10
+#define PORT_STR_LEN 7
 char server_tcp_port_str[PORT_STR_LEN];
-struct addrinfo hints;
+struct addrinfo tcp_hints;
 struct addrinfo *ai_result;
 struct control_msghdr *cmh; /* common header pointer */
+
+/*
+ * For UDP messages to server
+ */
+int udp_sock;
+char server_udp_port_str[PORT_STR_LEN];
+struct addrinfo udp_hints;
 
 
 /* For communication with chat server */
@@ -76,16 +83,18 @@ int ctrl2rcvr_qid;
 /*
  * Send command/check common to all handle_XXX functions
  */
-#define SEND_BUF() \
-    if ((bytes = write(tcp_sock, buf, cmh->msg_len)) == -1) { \
+#define TCP_SEND_BUF() \
+    if ((bytes = write(tcp_sock, buf, ntohs(cmh->msg_len))) == -1) { \
         err_quit("%s: write: %s\n", __func__, strerror(errno)); \
     } \
     debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
 
 /*
  * Receive command/check common to all handle_XXX functions
+ *
+ * TODO: check for ECONNREFUSED, ENOTCONN, 
  */
-#define RECV_BUF() \
+#define TCP_RECV_BUF() \
     if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) { \
         err_quit("%s: recv'd: %s\n", __func__, strerror(errno)); \
     } \
@@ -114,35 +123,37 @@ static void usage(char **argv) {
 }
 
 
-// TODO: This
+/* Function to clean up after ourselves on exit, freeing any used
+ * resources
+ *
+ * Assumes that the TCP socket to the server has already been cleaned
+ * up using close_tcp() -- otherwise we'd not be sure whether or not
+ * to call it (potentially close()ing the fd more than once)
+ */
+// TODO: This...
 void shutdown_clean(int ret) {
-    /* Function to clean up after ourselves on exit, freeing any used resources */
 
-    /* Add to this function to clean up any additional resources that you
-     * might allocate.
-     */
-
-//    msg_t msg;
+    msg_t msg;
 
     /* 1. Send message to receiver to quit */
-/*
+
     msg.mtype = RECV_TYPE;
     msg.body.status = CHAT_QUIT;
     msgsnd(ctrl2rcvr_qid, &msg, sizeof(struct body_s), 0);
-*/
+
     /* 2. Close open fd's */
-//    close(udp_socket_fd);
+    close(udp_socket_fd);
 
     /* 3. Wait for receiver to exit */
-//    waitpid(receiver_pid, 0, 0);
+    waitpid(receiver_pid, 0, 0);
 
     /* 4. Destroy message channel */
-/*
+
     unlink(ctrl2rcvr_fname);
     if (msgctl(ctrl2rcvr_qid, IPC_RMID, NULL)) {
         perror("cleanup - msgctl removal failed");
     }
-*/
+
     free(buf);
 
     exit(ret);
@@ -291,48 +302,46 @@ void open_tcp() {
 
     /* get addr info */
     if ((status = getaddrinfo(server_host_name, server_tcp_port_str,
-        &hints, &ai_result)) != 0) {
-        err_quit("getaddrinfo: %s\n", gai_strerror(status));
+        &tcp_hints, &ai_result)) != 0) {
+        err_quit("%s: getaddrinfo: %s\n", __func__, gai_strerror(status));
     }
 
     /* get socket descriptor */
     if ((tcp_sock = socket(ai_result->ai_family, ai_result->ai_socktype,
         ai_result->ai_protocol)) == -1) {
-        err_quit("tcp socket(): %s\n", strerror(errno));
+        err_quit("%s: socket: %s\n", __func__, strerror(errno));
     }
 
     if ((connect(tcp_sock, ai_result->ai_addr, ai_result->ai_addrlen))
         == -1) {
-        err_quit("connect: %s\n", strerror(errno));
+        err_quit("%s: connect: %s\n", __func__, strerror(errno));
     }
+
+    freeaddrinfo(ai_result);
 
 }
 
 void close_tcp() {
     close(tcp_sock); 
-    freeaddrinfo(ai_result);
 }
 
 
-/*********************************************************************/
-
-/* We define one handle_XXX_req() function for each type of 
-* control message request from the chat client to the chat server.
-* These functions should return 0 on success, and a negative number 
-* on error.
-*
-* These functions all assume that buf points to a block of memory at
-* least MAX_MSG_LEN in size.
-*/
+/*********************************************************************
+ * We define one handle_XXX_req() function for each type of 
+ * control message request from the chat client to the chat server.
+ * These functions should return 0 on success, and a negative number 
+ * on error.
+ *
+ * These functions all assume that buf points to a block of memory at
+ * least MAX_MSG_LEN in size.
+ */
 
 
 int handle_register_req()
 {
 
-
     /*register data area pointer */
     struct register_msgdata *rdata;
-
 
     /********************************************
      * Register with chat server
@@ -351,36 +360,41 @@ int handle_register_req()
     /* rdata points to the data area */
     rdata = (struct register_msgdata *)cmh->msgdata;
 
-/* TODO: not this */
-#define TMP_PORT 7777
-
     /* udp port: required */
-    rdata->udp_port = htons(TMP_PORT);
+    rdata->udp_port = htons(client_udp_port);
 
     /* member name */
     strcpy((char *)rdata->member_name, member_name);
 
     /* message length */
-    cmh->msg_len = sizeof(struct control_msghdr) +
+    cmh->msg_len = htons(sizeof(struct control_msghdr) +
       sizeof(struct register_msgdata) +
-      strlen(member_name);
+      strlen(member_name));
 
     /* Contact server, send the message */
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
 
     /* Catch reply */
-    RECV_BUF();
+    TCP_RECV_BUF();
+    close_tcp();
 
     switch (cmh->msg_type) {
         case REGISTER_SUCC:
             printf("Successfully registered '%s' as member #%d\n",
-                member_name, (member_id = cmh->member_id));
+                member_name, (member_id = ntohs(cmh->member_id)));
             break;
         case REGISTER_FAIL:
-            // TODO: change name, reconnect?
-            err_quit("%s: REGISTER_FAIL: %s\n", __func__,
+            printf("Registration failed: %s\n",
                 (char *) (cmh->msgdata));
+            /* return zero here because no error occurred, probably
+             * the user chose a name already in use or a non-
+             * existant server.
+             * TODO: if we have a lot of time maybe allow the user to
+             * change their name or server and attempt registration
+             * again.
+             */
+            shutdown_clean(0);
             break;
         default:
             err_quit("%s: REGISTER_REQUEST returned %d\n",
@@ -388,7 +402,6 @@ int handle_register_req()
             break;
     }
     
-    close_tcp();
     return 0;
 }
 
@@ -398,15 +411,16 @@ int handle_room_list_req()
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = ROOM_LIST_REQUEST;
-    cmh->member_id = member_id;
-    cmh->msg_len = sizeof(struct control_msghdr);
+    cmh->member_id = htons(member_id);
+    cmh->msg_len = htons(sizeof(struct control_msghdr));
 
     /* Open connection, send request */
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
 
     /* Catch, handle response */
-    RECV_BUF();
+    TCP_RECV_BUF();
+    close_tcp();
 
     switch (cmh->msg_type) {
         case ROOM_LIST_SUCC:
@@ -421,7 +435,6 @@ int handle_room_list_req()
             break;
     }
 
-    close_tcp();
     return 0;
 }
 
@@ -431,16 +444,18 @@ int handle_member_list_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = MEMBER_LIST_REQUEST;
-    cmh->member_id = member_id;
+    cmh->member_id = htons(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = sizeof(struct control_msghdr) +
-        strlen(room_name);
+    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+        strlen(room_name));
 
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
 
     /* Catch, handle response */
-    RECV_BUF();
+    TCP_RECV_BUF();
+    close_tcp();
+
     switch (cmh->msg_type) {
         case MEMBER_LIST_SUCC:
             printf("%s\n", (char *) (cmh->msgdata));
@@ -455,7 +470,6 @@ int handle_member_list_req(char *room_name)
             break;
     }
 
-    close_tcp();
     return 0;
 }
 
@@ -464,16 +478,18 @@ int handle_switch_room_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = SWITCH_ROOM_REQUEST;
-    cmh->member_id = member_id;
+    cmh->member_id = htons(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = sizeof(struct control_msghdr) +
-        strlen(room_name);
+    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+        strlen(room_name));
 
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
 
     /* Catch, handle response */
-    RECV_BUF();
+    TCP_RECV_BUF();
+    close_tcp();
+
     switch (cmh->msg_type) {
         case SWITCH_ROOM_SUCC:
             printf("Switched to room '%s'\n", room_name);
@@ -488,7 +504,6 @@ int handle_switch_room_req(char *room_name)
             break;
     }
 
-    close_tcp();
     return 0;
 }
 
@@ -497,16 +512,18 @@ int handle_create_room_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = CREATE_ROOM_REQUEST;
-    cmh->member_id = member_id;
+    cmh->member_id = htons(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = sizeof(struct control_msghdr) +
-        strlen(room_name);
+    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+        strlen(room_name));
 
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
 
     /* Catch, handle response */
-    RECV_BUF();
+    TCP_RECV_BUF();
+    close_tcp();
+
     switch (cmh->msg_type) {
         case CREATE_ROOM_SUCC:
             printf("Room '%s' created.\n", room_name);
@@ -521,7 +538,6 @@ int handle_create_room_req(char *room_name)
             break;
     }
 
-    close_tcp();
     return 0;
 }
 
@@ -531,11 +547,11 @@ int handle_quit_req()
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = QUIT_REQUEST;
-    cmh->member_id = member_id;
-    cmh->msg_len = sizeof(struct control_msghdr);
+    cmh->member_id = htons(member_id);
+    cmh->msg_len = htons(sizeof(struct control_msghdr));
 
     open_tcp();
-    SEND_BUF();
+    TCP_SEND_BUF();
     close_tcp();
 
     printf("Quitting server.\n");
@@ -545,12 +561,57 @@ int handle_quit_req()
 }
 
 
+void create_udp_sender() {
+
+    int ret;
+    struct addrinfo *srv;
+    // set up udp socket to send to chat server
+    
+    debug_sub_print(DBG_UDP, "%s: init UDP 'connection'...\n", __func__);
+    
+    memset(&udp_hints, 0, sizeof(udp_hints));
+    udp_hints.ai_family = AF_INET;
+    udp_hints.ai_socktype = SOCK_DGRAM;
+
+    if ((ret = getaddrinfo(server_host_name, server_udp_port_str,
+        &udp_hints, &ai_result)) != 0) {
+        err_quit("%s: getaddrinfo: %s\n",
+            __func__, gai_strerror(ret));
+    }
+
+    for (srv = ai_result; srv != NULL; srv = srv ->ai_next) {
+
+        if ((udp_sock = socket(srv->ai_family, srv->ai_socktype,
+            srv->ai_protocol)) == -1) {
+
+            debug_sub_print(DBG_UDP, "%s: socket: %s\n",
+                __func__, strerror(errno));
+            continue;
+        }
+    
+        if ((connect(udp_sock, srv->ai_addr, srv->ai_addrlen)) == -1) {
+            debug_sub_print(DBG_UDP, "%s: connect: %s\n",
+                __func__, strerror(errno));
+            continue;
+        }
+    
+        break;
+    }
+
+    freeaddrinfo(ai_result);
+    
+    if (srv == NULL) {
+        err_quit("%s: failed to bind to socket\n", __func__);
+    }
+
+}
+
+
 /*
  * Set up the client before accepting input.
  */
 int init_client()
 {
-   
     
     /* Make room for message buffer */
     if ((buf = (char *)malloc(MAX_MSG_LEN)) == 0) {
@@ -561,13 +622,14 @@ int init_client()
     * field values can then be directly assigned */
     cmh = (struct control_msghdr *)buf;
     
-    /* set up connection hints */
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    /* set up connection tcp_hints */
+    memset(&tcp_hints, 0, sizeof(tcp_hints));
+    tcp_hints.ai_family = AF_INET;
+    tcp_hints.ai_socktype = SOCK_STREAM;
 
-    /* stringify server port for getaddrinfo */
+    /* stringify server ports for getaddrinfo */
     sprintf(server_tcp_port_str, "%d", server_tcp_port);
+    sprintf(server_udp_port_str, "%d", server_udp_port);
 
 #ifdef USE_LOCN_SERVER
 
@@ -580,14 +642,15 @@ int init_client()
     /********************************************
      * Initialization to allow UDP-based chat messages to chat server 
      */
-    debug_sub_print(DBG_UDP, "%s: Should init UDP here...\n", __func__);
+    create_udp_sender();
 
 
     /********************************************
      * Spawn receiver process - see create_receiver() in this file.
      */
-    debug_sub_print(DBG_RCV, "%s: Should init receiver process here...\n",
+    debug_sub_print(DBG_RCV, "%s: init receiver process...\n",
         __func__);
+    create_receiver();
 
     /** Send register request ******************/
     handle_register_req();
@@ -606,6 +669,7 @@ void handle_chatmsg_input(char *inputdata)
     */
 
     char *buf = (char *)malloc(MAX_MSG_LEN);
+    struct chat_msghdr *chat = (struct chat_msghdr *) buf;
 
     if (buf == 0) {
         printf("Could not malloc memory for message buffer\n");
@@ -613,10 +677,14 @@ void handle_chatmsg_input(char *inputdata)
     }
 
     bzero(buf, MAX_MSG_LEN);
+    chat->sender.member_id = htons(member_id);
+    sprintf((char *)(chat->msgdata), "%s\0", inputdata);
+    chat->msg_len = htons(sizeof(struct chat_msghdr) + strlen(inputdata));
 
-
-    /**** YOUR CODE HERE ****/
-
+    if ((bytes = write(udp_sock, buf, ntohs(chat->msg_len))) == -1) {
+        err_quit("%s: write: %s\n", __func__, strerror(errno));
+    }
+    debug_sub_print(DBG_UDP, "%s: %dB written\n", __func__, bytes);
 
     free(buf);
     return;

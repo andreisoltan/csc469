@@ -8,7 +8,7 @@ KILL_CMD := killall -v -u $(ME)
 QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ')
 
 CC = gcc
-CFLAGS = -Wall -g -DDEBUG -DDBG_TCP # -DDBG_UDP -DDBG_RCV -DUSE_LOCN_SERVER
+CFLAGS = -Wall -g -DDEBUG -DDBG_TCP  -DDBG_UDP -DDBG_RCV # -DUSE_LOCN_SERVER
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
@@ -32,7 +32,7 @@ chatserver: $(SERVER_OBJS)
 server_util.o: server_util.c server.h defs.h
 server_main.o: server_main.c defs.h server.h
 
-chatclient: $(CLIENT_OBJS) 
+chatclient: $(CLIENT_OBJS) receiver
 	$(CC) $(CFLAGS) $(CLIENT_OBJS) -o $(CHATCLIENT_BIN)
 
 client_util.o: client_util.c client.h defs.h
@@ -49,7 +49,8 @@ clean:
 ###########################################################################
 
 run-server: $(SERVER_BIN)
-	./$(SERVER_BIN) -t $(TCP_PORT) -u $(UDP_PORT) -r room.cfg &
+	rm -f server.log
+	./$(SERVER_BIN) -t $(TCP_PORT) -u $(UDP_PORT) -r room.cfg -f server.log &
 	
 run-client: $(CHATCLIENT_BIN)
 	./$(CHATCLIENT_BIN) \

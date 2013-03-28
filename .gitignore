@@ -23,3 +23,5 @@ parta
 *.exe
 *.out
 *.app
+
+a3/*.log
