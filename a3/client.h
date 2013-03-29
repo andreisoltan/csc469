@@ -98,6 +98,12 @@ typedef struct our_msgbuf {
 #define BIND_FAILED   12
 #define NAME_FAILED   13
 
+/* Failure codes for client. */
+#define SERVER_FULL    1
+#define NAME_IN_USE    2
+#define BOGUS_RESPONSE 3
+#define SERVER_DOWN    4
+#define RETRY_SERVER   5
 
 extern char *optarg; /* For option parsing */
 

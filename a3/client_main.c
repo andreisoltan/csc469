@@ -89,6 +89,8 @@ int ctrl2rcvr_qid;
 
 /*
  * Send command/check common to all handle_XXX functions
+ *
+ * TODO: try to handle EPIPE
  */
 #define TCP_SEND_BUF() \
     if ((bytes = write(tcp_sock, buf, ntohs(cmh->msg_len))) == -1) { \
@@ -148,16 +150,10 @@ static void usage(char **argv) {
  * up using close_tcp() -- otherwise we'd not be sure whether or not
  * to call it (potentially close()ing the fd more than once)
  */
-// TODO: This...
 void shutdown_clean(int ret) {
 
-    msg_t msg;
-
     /* 1. Send message to receiver to quit */
-
-    msg.mtype = RECV_TYPE;
-    msg.body.status = CHAT_QUIT;
-    msgsnd(ctrl2rcvr_qid, &msg, sizeof(struct body_s), 0);
+    handle_quit_req();
 
     /* 2. Close open fd's */
     close(udp_socket_fd);
@@ -321,17 +317,20 @@ void open_tcp() {
     /* get addr info */
     if ((status = getaddrinfo(server_host_name, server_tcp_port_str,
         &tcp_hints, &ai_result)) != 0) {
+        /* TODO: try recovering to different server? */
         err_quit("%s: getaddrinfo: %s\n", __func__, gai_strerror(status));
     }
 
     /* get socket descriptor */
     if ((tcp_sock = socket(ai_result->ai_family, ai_result->ai_socktype,
         ai_result->ai_protocol)) == -1) {
+        /* Unhandlable, fail */
         err_quit("%s: socket: %s\n", __func__, strerror(errno));
     }
 
     if ((connect(tcp_sock, ai_result->ai_addr, ai_result->ai_addrlen))
         == -1) {
+        /* TODO: try handling ECONNREFUSED, ENETUNREACH, ETIMEDOUT */
         err_quit("%s: connect: %s\n", __func__, strerror(errno));
     }
 
@@ -405,17 +404,14 @@ int handle_register_req()
         case REGISTER_FAIL:
             printf("Registration failed: %s\n",
                 (char *) (cmh->msgdata));
-            /* return zero here because no error occurred, probably
-             * the user chose a name already in use or a non-
-             * existant server.
-             * TODO: if we have a lot of time maybe allow the user to
-             * change their name or server and attempt registration
-             * again.
+            /* TODO: might have failed on full server, might have failed
+             * on name already in use
              */
             shutdown_clean(0);
             break;
         default:
-            err_quit("%s: REGISTER_REQUEST returned %d\n",
+            err_quit("%s: unexpected response to "
+                "REGISTER_REQUEST: %d\n",
                 __func__, cmh->msg_type);
             break;
     }
@@ -448,7 +444,7 @@ int handle_room_list_req()
             printf("Could not list rooms: %s\n", (char *) (cmh->msgdata)); 
             break;
         default:
-            err_quit("%s: ROOM_LIST_REQUEST returned %d\n",
+            err_quit("%s: unexpected response to ROOM_LIST_REQUEST: %d\n",
                 __func__, cmh->msg_type);
             break;
     }
@@ -483,7 +479,8 @@ int handle_member_list_req(char *room_name)
                 room_name, (char *) (cmh->msgdata));
             break;
         default:
-            err_quit("%s: MEMBER_LIST_REQUEST returned %d\n",
+            err_quit("%s: unexpected response to "
+                "MEMBER_LIST_REQUEST: %d\n",
                 __func__, cmh->msg_type);
             break;
     }
@@ -517,7 +514,7 @@ int handle_switch_room_req(char *room_name)
                 room_name, (char *) (cmh->msgdata));
             break;
         default:
-            err_quit("%s: SWITCH_ROOM_REQUEST returned %d\n",
+            err_quit("%s: unexpected response to SWITCH_ROOM_REQUEST: %d\n",
                 __func__, cmh->msg_type);
             break;
     }
@@ -551,7 +548,7 @@ int handle_create_room_req(char *room_name)
                 room_name, (char *) (cmh->msgdata));
             break;
         default:
-            err_quit("%s: CREATE_ROOM_REQUEST returned %d\n",
+            err_quit("%s: unexpected response to CREATE_ROOM_REQUEST: %d\n",
                 __func__, cmh->msg_type);
             break;
     }
@@ -612,6 +609,12 @@ void create_udp_sender() {
 
     if ((ret = getaddrinfo(server_host_name, server_udp_port_str,
         &udp_hints, &ai_result)) != 0) {
+        /* TODO: 
+         * EAI_AGAIN -> try again
+         * EAI_FAIL, EAI_NODATA, EAI_NONAME -> try diff server
+         * EAI_SYSTEM -> print strerror, bail
+         * others -> bail
+         */
         err_quit("%s: getaddrinfo: %s\n",
             __func__, gai_strerror(ret));
     }
@@ -620,13 +623,14 @@ void create_udp_sender() {
 
         if ((udp_sock = socket(srv->ai_family, srv->ai_socktype,
             srv->ai_protocol)) == -1) {
-
+            /* unrecoverable, try next result */
             debug_sub_print(DBG_UDP, "%s: socket: %s\n",
                 __func__, strerror(errno));
             continue;
         }
     
         if ((connect(udp_sock, srv->ai_addr, srv->ai_addrlen)) == -1) {
+            /* TODO: try to handle before going to next result */
             debug_sub_print(DBG_UDP, "%s: connect: %s\n",
                 __func__, strerror(errno));
             continue;
@@ -719,6 +723,8 @@ void handle_chatmsg_input(char *inputdata)
     chat->msg_len = htons(sizeof(struct chat_msghdr) + strlen(inputdata));
 
     if ((bytes = write(udp_sock, buf, ntohs(chat->msg_len))) == -1) {
+        /* TODO: handle EPIPE, bail on other errors
+         */
         err_quit("%s: write: %s\n", __func__, strerror(errno));
     }
     debug_sub_print(DBG_UDP, "%s: %dB written\n", __func__, bytes);
@@ -915,6 +921,8 @@ void main_loop() {
                         __func__, strerror(errno));
                     */
                 } else {
+                    /* TODO: try handling this
+                     */
                     err_quit("%s: msgrcv: %s\n", __func__, strerror(errno)); 
                 }
             } else if (bytes > 0) {
@@ -925,7 +933,7 @@ void main_loop() {
                     seen_server();
                 } else {
                     debug_sub_print(DBG_ACTIVE, "%s: Unexpected message"
-                        "type (%d)\n", __func__, msg.body.status);
+                        "type from receiver (%d)\n", __func__, msg.body.status);
                 }
             }
         }
