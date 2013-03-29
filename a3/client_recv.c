@@ -299,8 +299,7 @@ void receive_msgs()
              * quit directives.
              */
             if ((msg->body.status) == (CHAT_QUIT)) {
-                debug_sub_print(DBG_RCV, "%s: Quit message from client\n",
-                    __func__);
+                printf("%s: Received quit message from client\n", __func__);
                 break;
             } else {
                 debug_sub_print(DBG_RCV, "%s: Nonquit message from client " \

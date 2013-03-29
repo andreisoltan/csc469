@@ -146,14 +146,31 @@ static void usage(char **argv) {
 /* Function to clean up after ourselves on exit, freeing any used
  * resources
  *
- * Assumes that the TCP socket to the server has already been cleaned
- * up using close_tcp() -- otherwise we'd not be sure whether or not
- * to call it (potentially close()ing the fd more than once)
+ * You should close any open TCP socket before calling this. We'll
+ * send the quit request from here.
  */
 void shutdown_clean(int ret) {
 
-    /* 1. Send message to receiver to quit */
-    handle_quit_req();
+    msg_t msg;
+
+    /* 1. Send message to server to quit */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = QUIT_REQUEST;
+    cmh->member_id = htons(member_id);
+    cmh->msg_len = htons(sizeof(struct control_msghdr));
+
+    open_tcp();
+    TCP_SEND_BUF();
+    close_tcp();
+
+    printf("Quitting server.\n");
+
+    /* 1b. Tell receiver to quit */
+    msg.mtype = RECV_TYPE;
+    msg.body.status = CHAT_QUIT;
+    if (msgsnd(ctrl2rcvr_qid, &msg, sizeof(struct body_s), 0) < 0) {
+        err_quit("%s: msgsnd: %s\n", __func__, strerror(errno));
+    }
 
     /* 2. Close open fd's */
     close(udp_socket_fd);
@@ -186,6 +203,7 @@ int initialize_client_only_channel(int *qid)
 
     snprintf(ctrl2rcvr_fname,MAX_FILE_NAME_LEN,"/tmp/ctrl2rcvr_channel.XXXXXX");
     msg_fd = mkstemp(ctrl2rcvr_fname);
+    debug_print("ipc file: %s\n", ctrl2rcvr_fname);
 
     if (msg_fd  < 0) {
         perror("Could not create file for communication channel");
@@ -558,18 +576,6 @@ int handle_create_room_req(char *room_name)
 
 
 int handle_quit_req() {
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = QUIT_REQUEST;
-    cmh->member_id = htons(member_id);
-    cmh->msg_len = htons(sizeof(struct control_msghdr));
-
-    open_tcp();
-    TCP_SEND_BUF();
-    close_tcp();
-
-    printf("Quitting server.\n");
-
     shutdown_clean(0); /* exits */
     return 0;
 }
