@@ -9,26 +9,33 @@
  * Please report bugs/comments to demke@cs.toronto.edu
  *
  */
+#define _GNU_SOURCE /* for memrchr from string.h */
 
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
-
-#include <netinet/in.h>
-#include <netdb.h>
 
 #include "client.h"
 #include "defs.h"
-#include <errno.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 /*************** GLOBAL VARIABLES ******************/
 
 static char *option_string = "h:t:u:n:";
 
 char *buf;
+
+/* For detecting server going down */
+#ifndef KA_MINUTES
+    #define KA_MINUTES 2
+#endif
+#define KA_TIMEOUT ( 60 * KA_MINUTES )
+time_t last_seen = 0;
 
 /*
  * For TCP connection with server
@@ -86,6 +93,8 @@ int ctrl2rcvr_qid;
 #define TCP_SEND_BUF() \
     if ((bytes = write(tcp_sock, buf, ntohs(cmh->msg_len))) == -1) { \
         err_quit("%s: write: %s\n", __func__, strerror(errno)); \
+    } else { \
+        seen_server(); \
     } \
     debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
 
@@ -105,8 +114,17 @@ int ctrl2rcvr_qid;
     fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
     shutdown_clean(1);
 
+/* prompt */
+#define PROMPT() printf("[%s]>  ",member_name);
 
 /************* FUNCTION DEFINITIONS ***********/
+
+/* Updates the last_seen time for the server */
+void seen_server() {
+    last_seen = time(NULL);
+    debug_sub_print(DBG_ACTIVE, "%s: last_seen: %d\n",
+        __func__, (int) last_seen);
+}
 
 static void usage(char **argv) {
 
@@ -542,8 +560,7 @@ int handle_create_room_req(char *room_name)
 }
 
 
-int handle_quit_req()
-{
+int handle_quit_req() {
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = QUIT_REQUEST;
@@ -557,6 +574,26 @@ int handle_quit_req()
     printf("Quitting server.\n");
 
     shutdown_clean(0); /* exits */
+    return 0;
+}
+
+/* If the send of this packet is successful, TCP_SEND_BUF will
+ * have updated the last_seen time. If not it currently will
+ * quit.
+ */
+int send_keepalive() {
+    /* Set up request */
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = MEMBER_KEEP_ALIVE;
+    cmh->member_id = htons(member_id);
+    cmh->msg_len = htons(sizeof(struct control_msghdr));
+
+    debug_sub_print(DBG_ACTIVE, "%s: sending.", __func__);
+
+    open_tcp();
+    TCP_SEND_BUF();
+    close_tcp();
+
     return 0;
 }
 
@@ -676,9 +713,9 @@ void handle_chatmsg_input(char *inputdata)
         shutdown_clean(1);
     }
 
-    bzero(buf, MAX_MSG_LEN);
+    memset(buf, 0, MAX_MSG_LEN);
     chat->sender.member_id = htons(member_id);
-    sprintf((char *)(chat->msgdata), "%s\0", inputdata);
+    strcpy((char *)(chat->msgdata), inputdata);
     chat->msg_len = htons(sizeof(struct chat_msghdr) + strlen(inputdata));
 
     if ((bytes = write(udp_sock, buf, ntohs(chat->msg_len))) == -1) {
@@ -789,46 +826,121 @@ void handle_command_input(char *line)
     return;
 }
 
-void get_user_input()
-{
+void main_loop() {
+#define STDIN 0
+
+    struct timeval to;
+    char *newline;
+    int bytes, buf_idx = 0;
+    fd_set input_fds;
     char *buf = (char *)malloc(MAX_MSGDATA);
-    char *result_str;
+    msg_t msg;
+
+    memset(buf, 0, MAX_MSGDATA);
+    printf("\n");
+    PROMPT();
 
     while(TRUE) {
 
-        bzero(buf, MAX_MSGDATA);
-
-        printf("\n[%s]>  ",member_name);
-
-        result_str = fgets(buf,MAX_MSGDATA,stdin);
-
-        if (result_str == NULL) {
-            printf("Error or EOF while reading user input.  Guess we're done.\n");
-            break;
+        /* If we've not seen the server in KA_TIMEOUT seconds, send
+         * a keepalive message. */
+        if ((time(NULL) - last_seen) > KA_TIMEOUT) {
+            send_keepalive();
         }
 
-        /* Check if control message or chat message */
 
-        if (buf[0] == '!') {
-            /* buf probably ends with newline.  If so, get rid of it. */
-            int len = strlen(buf);
-            if (buf[len-1] == '\n') {
-                buf[len-1] = '\0';
+        /****************************************
+         * Check stdin for input...
+         *
+         * TODO: try other values for timeout?
+         */
+        FD_ZERO(&input_fds);
+        FD_SET(STDIN, &input_fds);
+        to.tv_sec = 0;
+        to.tv_usec = 0;
+
+        select(STDIN+1, &input_fds, NULL, NULL, &to);
+
+        if (FD_ISSET(STDIN, &input_fds)) {
+            debug_sub_print(DBG_ACTIVE, "stdin ISSET\n");
+            /************************************
+             * Can read from stdin, collect input in buf until
+             * we've got a whole line.
+             */
+            bytes = read(STDIN, buf + buf_idx, MAX_MSGDATA - buf_idx);
+
+            if (bytes <= 0) {
+                err_quit("%s: reading from stdin: %s\n",
+                    __func__, strerror(errno));
+            } else {
+                newline = (char *) (memrchr(buf + buf_idx, '\n', bytes));
+
+                if (newline) {
+                    /* User pressed enter, check if control message or
+                     * chat message. The functions which we pass the input
+                     * on to expect null-termination.
+                     */
+                    *newline = '\0';
+
+                    if (buf[0] == '!') {
+                        handle_command_input(&buf[1]);
+                    } else {
+                        handle_chatmsg_input(buf);
+                    }
+                    
+                    PROMPT();
+                    /* done with the buffer contents */
+                    memset(buf, 0, MAX_MSGDATA);
+                } else {
+                    /* keep track of how much buffer we've used, continue
+                     * waiting for a newline...
+                     */
+                    buf_idx += bytes;
+                }
             }
-            handle_command_input(&buf[1]);
         } else {
-            handle_chatmsg_input(buf);
+            /************************************
+             * Try to read a message from the queue...
+             */
+            bytes = msgrcv(ctrl2rcvr_qid, &msg, sizeof(struct body_s),
+                CTRL_TYPE, IPC_NOWAIT);
+
+            if (bytes <= 0) {
+                /* EAGAIN and ENOMSG are expected if there was nothing
+                 * waiting for us, don't know what to do with other
+                 * types of error */
+                if ((errno != EAGAIN) || (errno != ENOMSG)) {
+                    /* that's cool */
+                    /*debug_sub_print(DBG_ACTIVE, "%s: msgrcv: %s\n",
+                        __func__, strerror(errno));
+                    */
+                } else {
+                    err_quit("%s: msgrcv: %s\n", __func__, strerror(errno)); 
+                }
+            } else if (bytes > 0) {
+                /* Update our timestamp if it is an activity notification from
+                 * the receiver process, otherwise we're not sure what to do
+                 */
+                if ((msg.body.status) == SERVER_ACTIVE) {
+                    seen_server();
+                } else {
+                    debug_sub_print(DBG_ACTIVE, "%s: Unexpected message"
+                        "type (%d)\n", __func__, msg.body.status);
+                }
+            }
         }
     }
 
     free(buf);
-
+    return;
 }
-
 
 int main(int argc, char **argv)
 {
     char option;
+
+    /* we want unbuffered output */
+    setbuf(stdout, NULL);
 
     while((option = getopt(argc, argv, option_string)) != -1) {
         switch(option) {
@@ -870,7 +982,7 @@ int main(int argc, char **argv)
 
     init_client();
 
-    get_user_input();
+    main_loop();
 
     return 0;
 }

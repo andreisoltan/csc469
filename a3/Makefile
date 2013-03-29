@@ -5,15 +5,16 @@
 SHELL = bash
 ME := $(shell who am i | cut -f1 -d' ')
 KILL_CMD := killall -v -u $(ME)
-QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ')
+QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ' | sed 's/^/-q /')
 
 CC = gcc
-CFLAGS = -Wall -g -DDEBUG -DDBG_TCP  -DDBG_UDP -DDBG_RCV # -DUSE_LOCN_SERVER
+CFLAGS = -Wall -g -DDEBUG -DDBG_ACTIVE #-DDBG_TCP  -DDBG_UDP -DDBG_RCV # -DUSE_LOCN_SERVER
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
+RECEIVER_BIN = receiver
 CHATCLIENT_BIN = chatclient
-CLIENT_BIN = $(CHATCLIENT_BIN) receiver
+CLIENT_BIN = $(CHATCLIENT_BIN) $(RECEIVER_BIN)
 CLIENT_OBJS = client_main.o client_util.o 
 RECVR_OBJS = client_recv.o client_util.o
 
@@ -26,20 +27,20 @@ HOST_NAME = localhost
 
 all: $(SERVER_BIN) $(CLIENT_BIN)
 
-chatserver: $(SERVER_OBJS) 
+$(SERVER_BIN): $(SERVER_OBJS) 
 	$(CC) $(CFLAGS) $(SERVER_OBJS) -o $(SERVER_BIN)
 
 server_util.o: server_util.c server.h defs.h
 server_main.o: server_main.c defs.h server.h
 
-chatclient: $(CLIENT_OBJS) receiver
+$(CHATCLIENT_BIN): $(CLIENT_OBJS) $(RECEIVER_BIN)
 	$(CC) $(CFLAGS) $(CLIENT_OBJS) -o $(CHATCLIENT_BIN)
 
 client_util.o: client_util.c client.h defs.h
 client_main.o: client_main.c client.h defs.h 
 
-receiver: $(RECVR_OBJS)
-	$(CC) $(CFLAGS) $(RECVR_OBJS) -o receiver
+$(RECEIVER_BIN): $(RECVR_OBJS)
+	$(CC) $(CFLAGS) $(RECVR_OBJS) -o $(RECEIVER_BIN)
 
 clean:
 	rm -f *.o $(SERVER_BIN) $(CLIENT_BIN) core
@@ -63,11 +64,11 @@ kill-server:
 	$(KILL_CMD) $(SERVER_BIN)
 
 kill-client:
-	$(KILL_CMD) $(CHATCLIENT_BIN)
+	$(KILL_CMD) $(CHATCLIENT_BIN) ; $(KILL_CMD) $(RECEIVER_BIN)
 
 kill-both:
 	make kill-server ; make kill-client
 
 clean-queues:
-	ipcrm -q $(QUEUES)
+	ipcrm $(QUEUES)
 

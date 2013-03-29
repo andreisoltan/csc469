@@ -29,6 +29,9 @@
 #ifndef DEBUG
     #define DEBUG 0
 #endif
+#ifndef DBG_ACTIVE
+    #define DBG_ACTIVE 0
+#endif
 #ifndef DBG_TCP
     #define DBG_TCP 0
 #endif
@@ -63,7 +66,11 @@ struct body_s {
   u_int16_t value;
 } ;
 
-typedef struct msgbuf {
+/* Compiler was complaining about this "typedef struct msgbuf" being a \
+ * redefinition of one found in /usr/include/sys/msg.h. We only refer to
+ * it by the type name in our work here.
+ */
+typedef struct our_msgbuf {
   long mtype;
   struct body_s body;
 } msg_t;
@@ -76,11 +83,14 @@ typedef struct msgbuf {
 
 /* receiver can tell controller it's ready and supply port number,
  * or not ready and a failure code.  Controller can tell receiver to quit.
+ * Receiver can tell the controller that it has just seen some activity
+ * from the chat server.
  */
 
 #define RECV_READY    1
 #define RECV_NOTREADY 2
 #define CHAT_QUIT     3
+#define SERVER_ACTIVE 4
 
 /* Failure codes from receiver. */
 #define NO_SERVER     10

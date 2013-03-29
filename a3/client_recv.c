@@ -53,14 +53,14 @@ void open_client_channel(int *qid) {
     /* Get messsage channel */
     key_t key = ftok(ctrl2rcvr_fname, 42);
 
-    if ((*qid = msgget(key, 0400)) < 0) {
-	perror("open_channel - msgget failed");
-	fprintf(stderr,"for message channel ./msg_channel\n");
+    if ((*qid = msgget(key, S_IRUSR|S_IWUSR)) < 0) {
+        perror("open_channel - msgget failed");
+        fprintf(stderr,"for message channel ./msg_channel\n");
 
-	/* No way to tell parent about our troubles, unless/until it 
-	 * wait's for us.  Quit now.
-	 */
-	exit(1);
+        /* No way to tell parent about our troubles, unless/until it 
+         * wait's for us.  Quit now.
+         */
+        exit(1);
     }
 
     return;
@@ -93,6 +93,22 @@ void send_ok(int qid, u_int16_t port)
   if (msgsnd(qid, &msg, sizeof(struct body_s), 0) < 0) {
     perror("send_ok msgsnd");
   } 
+
+}
+
+/*
+ * Notify the client that we've just seen activity from the server
+ */
+void send_activity_seen(int qid) {
+
+    msg_t msg;
+
+    msg.mtype = CTRL_TYPE;
+    msg.body.status = SERVER_ACTIVE;
+
+    if (msgsnd(qid, &msg, sizeof(struct body_s), 0) < 0) {
+        perror("send_activity_seen msgsnd");
+    } 
 
 }
 
@@ -192,7 +208,7 @@ void handle_received_msg(char *buf)
  * No newline because there is one on the end of the messages we get
  * from clients TODO: enusure that received messages have a newline
  */
-#define FMT_FMT "%%%ds | %%.%ds"
+#define FMT_FMT "%%%ds | %%.%ds\n"
 #define FMT_LEN 17
 
     struct chat_msghdr *chat = (struct chat_msghdr *) buf;
@@ -244,11 +260,16 @@ void receive_msgs()
         select(listen_sock+1, &readfds, NULL, NULL, &to);
 
         if (FD_ISSET(listen_sock, &readfds)) {
+
             debug_sub_print(0, "%s: Chat message from server "
                 "requires processing\n", __func__);
 
+            /* Process message */
             bytes = recv(listen_sock, buf, MAX_MSG_LEN, 0);
             handle_received_msg(buf);
+
+            /* Tell the chat client that the server is still up */
+            send_activity_seen(ctrl2rcvr_qid);
 
         } else {
             debug_sub_print(0, "%s: No messages from server\n",
@@ -261,23 +282,29 @@ void receive_msgs()
         bytes = msgrcv(ctrl2rcvr_qid, buf, MAX_MSG_LEN,
             RECV_TYPE, IPC_NOWAIT);
 
-        if (bytes == -1) {
-            // EAGAIN and ENOMSG are expected
-            if ((errno != EAGAIN) && (errno != ENOMSG)) {
-                debug_sub_print(DBG_RCV, "%s: msgrcv: %s\n",
+        if (bytes <= 0) {
+            /* EAGAIN and ENOMSG are expected if there was nothing
+             * waiting for us, don't know what to do with other
+             * types of error */
+            if ((errno != EAGAIN) || (errno != ENOMSG)) {
+                /* cool */
+                /*debug_sub_print(DBG_RCV, "%s: msgrcv: %s\n",
                     __func__, strerror(errno));
+                */
             } else {
-                // Nothing for us
+                err_quit("%s: msgrcv: %s\n", __func__, strerror(errno)); 
             }
         } else if (bytes > 0) {
-            //something to read
+            /* Found something to read, we only kow how to deal with
+             * quit directives.
+             */
             if ((msg->body.status) == (CHAT_QUIT)) {
-                debug_sub_print(DBG_RCV, "%s: Quit message from server " \
-                    "requires processing\n", __func__);
+                debug_sub_print(DBG_RCV, "%s: Quit message from client\n",
+                    __func__);
                 break;
             } else {
-                debug_sub_print(DBG_RCV, "%s: Nonquit message from server " \
-                    "(%d) requires processing\n", __func__, msg->body.status);
+                debug_sub_print(DBG_RCV, "%s: Nonquit message from client " \
+                    "(%d) not sure why.\n", __func__, msg->body.status);
             }
         }
 
