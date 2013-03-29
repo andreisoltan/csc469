@@ -20,7 +20,8 @@ RECVR_OBJS = client_recv.o client_util.o
 
 TCP_PORT = 49155
 UDP_PORT = $(TCP_PORT)
-TEST_NAME = testy_mctesterson
+NOW := $(shell echo $$$$)
+TEST_NAME = testy-$(NOW)
 HOST_NAME = localhost
 
 ##########################################################################
