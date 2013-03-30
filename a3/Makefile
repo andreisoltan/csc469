@@ -73,3 +73,13 @@ kill-both:
 clean-queues:
 	ipcrm $(QUEUES)
 
+###########################################################################
+# cdf testing target -- uses wget and awk to connect to the server given
+# in http://www.cdf.toronto.edu/~csc469h/winter/chatserver.txt WE STILL
+# NEED TO GIVE OUR CLIENT THE ABILITY TO DO THIS ON ITS OWN -- THIS IS JUST
+# FOR TESTING WITH ANGELA'S SERVER
+###########################################################################
+
+cdf-run-client: $(CHATCLIENT_BIN)
+	./client-to-cdf.sh $(TEST_NAME)
+
