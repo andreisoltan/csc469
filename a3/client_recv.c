@@ -83,16 +83,18 @@ void send_error(int qid, u_int16_t code)
 
 void send_ok(int qid, u_int16_t port)
 {
-  /* Send "success" result over the message channel to client control process */
-  msg_t msg;
+    /* Send "success" result over the message channel to client control process */
+    msg_t msg;
 
-  msg.mtype = CTRL_TYPE;
-  msg.body.status = RECV_READY;
-  msg.body.value = port;
+    msg.mtype = CTRL_TYPE;
+    msg.body.status = RECV_READY;
+    msg.body.value = port;
 
-  if (msgsnd(qid, &msg, sizeof(struct body_s), 0) < 0) {
-    perror("send_ok msgsnd");
-  } 
+    debug_sub_print(DBG_RCV, "%s: port number: %d\n", __func__, port);
+
+    if (msgsnd(qid, &msg, sizeof(struct body_s), 0) < 0) {
+        perror("send_ok msgsnd");
+    } 
 
 }
 
@@ -112,23 +114,13 @@ void send_activity_seen(int qid) {
 
 }
 
-/* Macros for generating a port number in the IANA-suggested
- * ephemeral range of 49152 - 65535
- */
-#define RAND_PORT_HI 65535
-#define RAND_PORT_LO 49152
-#define RAND_PORT_WIDTH ( (RAND_PORT_HI) - (RAND_PORT_LO) )
-#define RAND_PORT() ( (int) ( (1.0 * rand() / RAND_MAX) * RAND_PORT_WIDTH \
-    + RAND_PORT_LO ) )
-#define PORT_STR_LEN 6
-
 void init_receiver()
 {
 
+    struct sockaddr_in saddr; /* for retrieving our port no */
+    socklen_t len = sizeof(saddr);
     struct addrinfo hints, *addr_result, *r;
     int ret, err_save, port;
-    char str_port[PORT_STR_LEN];
-
 
     /********************************************
      *  Make sure we can talk to parent (client control process) 
@@ -144,14 +136,11 @@ void init_receiver()
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
 
-    port = RAND_PORT();
-    sprintf(str_port, "%d", port);
-
-    if ((ret = getaddrinfo(NULL, str_port, &hints, &addr_result))
-        != 0) {
+    if ((ret = getaddrinfo(NULL, "0", &hints, &addr_result)) != 0) {
         err_save = ret;
         debug_sub_print(DBG_UDP, "%s: getaddrinfo: %s\n",
             __func__, gai_strerror(ret));
+
     } else {
         /* Try to bind one of the results */
         for (r = addr_result; r != NULL; r = r->ai_next) {
@@ -186,11 +175,21 @@ void init_receiver()
         err_quit("%s: failed to bind to a socket\n", __func__);
     }
 
+    /* Find out what that our port is -- it will appear to be zero
+     * until we use it -- we'll throw away a recv call this should be
+     * nothing because we've not told anybody that we're active on this
+     * port.
+     */
+    recv(listen_sock, NULL, 0, MSG_DONTWAIT);
+
+    if ((getsockname(listen_sock, &saddr, &len)) == -1) {
+        err_quit("%s: getsockname: %s\n", __func__, strerror(errno));
+    }
+
+    port = ntohs(saddr.sin_port);
     send_ok(ctrl2rcvr_qid, port);
 
 }
-
-
 
 
 /* Function to deal with a single message from the chat server */
@@ -213,7 +212,7 @@ void handle_received_msg(char *buf)
 
     struct chat_msghdr *chat = (struct chat_msghdr *) buf;
     char fmt[FMT_LEN];
-    int text_len = htons(chat->msg_len) - sizeof(struct chat_msghdr);
+    int text_len = /*htons*/(chat->msg_len) - sizeof(struct chat_msghdr);
 
     sprintf(fmt, FMT_FMT, MAX_MEMBER_NAME_LEN, text_len);
     /* fmt looks something like this now: "%##s | %.####s\n" */
@@ -257,11 +256,11 @@ void receive_msgs()
         FD_SET(listen_sock, &readfds);
 
         // TODO: check return val
-        select(listen_sock+1, &readfds, NULL, NULL, &to);
+        bytes = select(listen_sock+1, &readfds, NULL, NULL, &to);
 
         if (FD_ISSET(listen_sock, &readfds)) {
 
-            debug_sub_print(0, "%s: Chat message from server "
+            debug_sub_print(DBG_RCV, "%s: Chat message from server "
                 "requires processing\n", __func__);
 
             /* Process message */
@@ -272,8 +271,8 @@ void receive_msgs()
             send_activity_seen(ctrl2rcvr_qid);
 
         } else {
-            debug_sub_print(0, "%s: No messages from server\n",
-                __func__);
+            debug_sub_print(DBG_RCV, "%s: No messages from server: %s\n",
+                __func__, strerror(errno));
         }
 
         /****************************************
@@ -286,7 +285,7 @@ void receive_msgs()
             /* EAGAIN and ENOMSG are expected if there was nothing
              * waiting for us, don't know what to do with other
              * types of error */
-            if ((errno != EAGAIN) || (errno != ENOMSG)) {
+            if ((errno == EAGAIN) || (errno == ENOMSG)) {
                 /* cool */
                 /*debug_sub_print(DBG_RCV, "%s: msgrcv: %s\n",
                     __func__, strerror(errno));

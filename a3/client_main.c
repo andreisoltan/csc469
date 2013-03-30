@@ -93,7 +93,7 @@ int ctrl2rcvr_qid;
  * TODO: try to handle EPIPE
  */
 #define TCP_SEND_BUF() \
-    if ((bytes = write(tcp_sock, buf, ntohs(cmh->msg_len))) == -1) { \
+    if ((bytes = write(tcp_sock, buf, /*ntohs*/(cmh->msg_len))) == -1) { \
         err_quit("%s: write: %s\n", __func__, strerror(errno)); \
     } else { \
         seen_server(); \
@@ -152,18 +152,6 @@ static void usage(char **argv) {
 void shutdown_clean(int ret) {
 
     msg_t msg;
-
-    /* 1. Send message to server to quit */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = QUIT_REQUEST;
-    cmh->member_id = htons(member_id);
-    cmh->msg_len = htons(sizeof(struct control_msghdr));
-
-    open_tcp();
-    TCP_SEND_BUF();
-    close_tcp();
-
-    printf("Quitting server.\n");
 
     /* 1b. Tell receiver to quit */
     msg.mtype = RECV_TYPE;
@@ -402,7 +390,7 @@ int handle_register_req()
     strcpy((char *)rdata->member_name, member_name);
 
     /* message length */
-    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
       sizeof(struct register_msgdata) +
       strlen(member_name));
 
@@ -417,7 +405,7 @@ int handle_register_req()
     switch (cmh->msg_type) {
         case REGISTER_SUCC:
             printf("Successfully registered '%s' as member #%d\n",
-                member_name, (member_id = ntohs(cmh->member_id)));
+                member_name, (member_id = /*ntohs*/(cmh->member_id)));
             break;
         case REGISTER_FAIL:
             printf("Registration failed: %s\n",
@@ -443,8 +431,8 @@ int handle_room_list_req()
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = ROOM_LIST_REQUEST;
-    cmh->member_id = htons(member_id);
-    cmh->msg_len = htons(sizeof(struct control_msghdr));
+    cmh->member_id = /*htons*/(member_id);
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr));
 
     /* Open connection, send request */
     open_tcp();
@@ -476,9 +464,9 @@ int handle_member_list_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = MEMBER_LIST_REQUEST;
-    cmh->member_id = htons(member_id);
+    cmh->member_id = /*htons*/(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
         strlen(room_name));
 
     open_tcp();
@@ -511,9 +499,9 @@ int handle_switch_room_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = SWITCH_ROOM_REQUEST;
-    cmh->member_id = htons(member_id);
+    cmh->member_id = /*htons*/(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
         strlen(room_name));
 
     open_tcp();
@@ -545,9 +533,9 @@ int handle_create_room_req(char *room_name)
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = CREATE_ROOM_REQUEST;
-    cmh->member_id = htons(member_id);
+    cmh->member_id = /*htons*/(member_id);
     strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = htons(sizeof(struct control_msghdr) +
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
         strlen(room_name));
 
     open_tcp();
@@ -576,6 +564,18 @@ int handle_create_room_req(char *room_name)
 
 
 int handle_quit_req() {
+    
+    printf("Quitting server.\n");
+
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = QUIT_REQUEST;
+    cmh->member_id = /* htons */(member_id);
+    cmh->msg_len = /* htons */(sizeof(struct control_msghdr));
+
+    open_tcp();
+    TCP_SEND_BUF();
+    close_tcp();
+
     shutdown_clean(0); /* exits */
     return 0;
 }
@@ -588,8 +588,8 @@ int send_keepalive() {
     /* Set up request */
     memset(buf, 0, MAX_MSG_LEN);
     cmh->msg_type = MEMBER_KEEP_ALIVE;
-    cmh->member_id = htons(member_id);
-    cmh->msg_len = htons(sizeof(struct control_msghdr));
+    cmh->member_id = /*htons*/(member_id);
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr));
 
     debug_sub_print(DBG_ACTIVE, "%s: sending.", __func__);
 
@@ -724,11 +724,11 @@ void handle_chatmsg_input(char *inputdata)
     }
 
     memset(buf, 0, MAX_MSG_LEN);
-    chat->sender.member_id = htons(member_id);
+    chat->sender.member_id = /*htons*/(member_id);
     strcpy((char *)(chat->msgdata), inputdata);
-    chat->msg_len = htons(sizeof(struct chat_msghdr) + strlen(inputdata));
+    chat->msg_len = /*htons*/(sizeof(struct chat_msghdr) + strlen(inputdata));
 
-    if ((bytes = write(udp_sock, buf, ntohs(chat->msg_len))) == -1) {
+    if ((bytes = write(udp_sock, buf, /*ntohs*/(chat->msg_len))) == -1) {
         /* TODO: handle EPIPE, bail on other errors
          */
         err_quit("%s: write: %s\n", __func__, strerror(errno));
@@ -874,10 +874,13 @@ void main_loop() {
         select(STDIN+1, &input_fds, NULL, NULL, &to);
 
         if (FD_ISSET(STDIN, &input_fds)) {
-            debug_sub_print(DBG_ACTIVE, "stdin ISSET\n");
+            debug_sub_print(DBG_ACTIVE, "%s: stdin has input\n", __func__);
             /************************************
              * Can read from stdin, collect input in buf until
-             * we've got a whole line.
+             * we've got a whole line. STDIN may be
+             * line-buffered, in which case this is not
+             * necessry. TODO: check/set buffering strategy
+             * of stdin
              */
             bytes = read(STDIN, buf + buf_idx, MAX_MSGDATA - buf_idx);
 
@@ -885,7 +888,7 @@ void main_loop() {
                 err_quit("%s: reading from stdin: %s\n",
                     __func__, strerror(errno));
             } else {
-                newline = (char *) (memrchr(buf + buf_idx, '\n', bytes));
+                newline = (char *) (memchr(buf + buf_idx, '\n', bytes));
 
                 if (newline) {
                     /* User pressed enter, check if control message or
@@ -901,8 +904,9 @@ void main_loop() {
                     }
                     
                     PROMPT();
-                    /* done with the buffer contents */
+                    /* done with the buffer contents, reset */
                     memset(buf, 0, MAX_MSGDATA);
+                    buf_idx = 0;
                 } else {
                     /* keep track of how much buffer we've used, continue
                      * waiting for a newline...
@@ -921,7 +925,7 @@ void main_loop() {
                 /* EAGAIN and ENOMSG are expected if there was nothing
                  * waiting for us, don't know what to do with other
                  * types of error */
-                if ((errno != EAGAIN) || (errno != ENOMSG)) {
+                if ((errno == EAGAIN) || (errno == ENOMSG)) {
                     /* that's cool */
                     /*debug_sub_print(DBG_ACTIVE, "%s: msgrcv: %s\n",
                         __func__, strerror(errno));
