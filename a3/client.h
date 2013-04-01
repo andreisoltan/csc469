@@ -107,6 +107,9 @@ typedef struct our_msgbuf {
 #define BOGUS_RESPONSE 3
 #define SERVER_DOWN    4
 #define RETRY_SERVER   5
+#define REG_FAILED     6
+
+#define RETRY_PAUSE     2
 
 extern char *optarg; /* For option parsing */
 
