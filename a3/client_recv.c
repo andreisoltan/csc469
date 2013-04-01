@@ -182,7 +182,7 @@ void init_receiver()
      */
     recv(listen_sock, NULL, 0, MSG_DONTWAIT);
 
-    if ((getsockname(listen_sock, &saddr, &len)) == -1) {
+    if ((getsockname(listen_sock, (struct sockaddr *)&saddr, &len)) == -1) {
         err_quit("%s: getsockname: %s\n", __func__, strerror(errno));
     }
 

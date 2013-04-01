@@ -26,7 +26,7 @@ static void build_req(char *buf)
 
   int nextpos = 0;
 
-  sprintf(&buf[nextpos],"GET /~csc469h/fall/chatserver.txt HTTP/1.0\r\n");
+  sprintf(&buf[nextpos],"GET /~csc469h/winter/chatserver.txt HTTP/1.0\r\n");
   nextpos = strlen(buf);
 
   sprintf(&buf[nextpos],"\r\n");
@@ -65,52 +65,135 @@ static char *skip_http_headers(char *buf)
 }
 
 
-int retrieve_chatserver_info(char *chatserver_name, u_int16_t *tcp_port, u_int16_t *udp_port)
+int retrieve_chatserver_info(char *chatserver_name,
+    u_int16_t *tcp_port, u_int16_t *udp_port)
 {
-  int locn_socket_fd;
-  char *buf;
-  int buflen;
-  int code;
-  int  n;
+    int locn_socket_fd;
+    char *buf, *body;
+    char location_fmt[11];
+    int buflen;
+    int code;
+    int  n;
+    int ret = 0;
+    int status;
 
-  /* Initialize locnserver_addr. 
-   * We use a text file at a web server for location info
-   * so this is just contacting the CDF web server */
+    struct addrinfo tcp_hints;
+    struct addrinfo *ai_result;
 
-  /* 1. Set up TCP connection to web server "www.cdf.toronto.edu", port 80 */
+    /* Initialize locnserver_addr. 
+     * We use a text file at a web server for location info
+     * so this is just contacting the CDF web server */
 
-  /**** YOUR CODE HERE ****/
+    /* 1. Set up TCP connection to web server "www.cdf.toronto.edu", port 80 */
+    memset(&tcp_hints, 0, sizeof(struct addrinfo));
+    tcp_hints.ai_family = AF_INET;
+    tcp_hints.ai_socktype = SOCK_STREAM;
+    
+    debug_sub_print(DBG_LOC, "%s: getaddrinfo\n", __func__);
+    if ((status = getaddrinfo("www.cdf.toronto.edu", "80",
+        &tcp_hints, &ai_result)) != 0)
+    {
+        ret = errno;
+        fprintf(stderr, "%s: getaddrinfo: %s\n", __func__,
+            gai_strerror(status));
+        return ret;
+    }
 
-  /* 2. write HTTP GET request to socket */
+    debug_sub_print(DBG_LOC, "%s: socket()\n", __func__);
+    /* get socket descriptor */
+    if ((locn_socket_fd = socket(ai_result->ai_family, ai_result->ai_socktype,
+        ai_result->ai_protocol)) == -1)
+    {
+        ret = errno;
+        /* Unhandlable, fail */
+        fprintf(stderr, "%s: socket: %s\n", __func__, strerror(errno));
+        return ret;
+    }
 
-  buf = (char *)malloc(MAX_MSG_LEN);
-  bzero(buf, MAX_MSG_LEN);
-  build_req(buf);
-  buflen = strlen(buf);
+    debug_sub_print(DBG_LOC, "%s: connecting\n", __func__);
+    if ((connect(locn_socket_fd, ai_result->ai_addr, ai_result->ai_addrlen))
+        == -1)
+    {
+        ret = errno;
+        fprintf(stderr, "%s: connect: %s\n", __func__, strerror(errno));
+        return ret;
+    }
 
-  write(locn_socket_fd, buf, buflen);
+    debug_sub_print(DBG_LOC, "%s: freeing addrinfo\n", __func__);
+    freeaddrinfo(ai_result);
 
-  /* 3. Read reply from web server */
+    debug_sub_print(DBG_LOC, "%s: writing request\n", __func__);
+    /* 2. write HTTP GET request to socket */
+    if ((buf = (char *)malloc(MAX_MSG_LEN)) == NULL)
+    {
+        fprintf(stderr, "%s: malloc failed\n", __func__);
+        return ENOMEM;
+    }
 
-  read(locn_socket_fd, buf, MAX_MSG_LEN);
+    bzero(buf, MAX_MSG_LEN);
+    build_req(buf);
+    buflen = strlen(buf);
 
-  /* 4. Check if request succeeded.  If so, skip headers and initialize
-   *    server parameters with body of message.  If not, print the 
-   *    STATUS-CODE and STATUS-TEXT and return -1.
-   */
+    if ((write(locn_socket_fd, buf, buflen) <= 0)) 
+    {
+        ret = errno;
+        close(locn_socket_fd);
+        fprintf(stderr, "%s: write failed %s\n",
+            __func__, strerror(errno));
+        return ret;
+    }
 
-  /* Ignore version, read STATUS-CODE into variable 'code' , and record
-   * the number of characters scanned from buf into variable 'n'
-   */
-  sscanf(buf, "%*s %d%n", &code, &n);
+    debug_sub_print(DBG_LOC, "%s: reading reply\n", __func__);
+    /* 3. Read reply from web server */
+    if ((read(locn_socket_fd, buf, MAX_MSG_LEN) <= 0)) 
+    {
+        ret = errno;
+        close(locn_socket_fd);
+        fprintf(stderr, "%s: read failed %s\n",
+            __func__, strerror(errno));
+        return ret;
+    }
+    
+    debug_sub_print(DBG_LOC, "%s: closing socket\n", __func__);
+    close(locn_socket_fd);
+    
+    /* 4. Check if request succeeded.  If so, skip headers and initialize
+     *    server parameters with body of message.  If not, print the 
+     *    STATUS-CODE and STATUS-TEXT and return -1.
+     */
 
+    /* Ignore version, read STATUS-CODE into variable 'code' , and record
+     * the number of characters scanned from buf into variable 'n'
+     */
+    debug_sub_print(DBG_LOC, "%s: scanning\n", __func__);
+    sscanf(buf, "%*s %d%n", &code, &n);
+    
+    /* Check code, if not 2xx, bail.
+     * (Later we should try to handle redirects, retrying)
+     */
+    if ((n < 3) || (code < 200) || (code >= 300)) {
+        fprintf(stderr, "%s: code=%d n=%d\n", __func__, code, n);
+        return ENOMSG;
+    }
 
-  /**** YOUR CODE HERE ****/
+    /* Use skip_http_headers to jump to body. */
+    body = skip_http_headers(buf);
+    
+    /* Scan hostname, ports from body (sanity checks?) */
+    sprintf(location_fmt, "%%%ds %%u %%u", MAX_HOST_NAME_LEN);
+    if ((sscanf(body, location_fmt,
+        chatserver_name, tcp_port, udp_port) != 3))
+    {
+        /* We didn't get the three things we were looking for
+         * back from the server.
+         */
+        fprintf(stderr, "%s: unexpected response from server\n", __func__);
+        return ENOMSG;
+    }
 
-
-  /* 5. Clean up after ourselves and return. */
-
-  free(buf);
-  return 0;
+    debug_sub_print(DBG_LOC, "%s: returning\n", __func__);
+    /* 5. Clean up after ourselves and return. */
+    free(buf);
+    return 0;
 
 }

@@ -29,6 +29,9 @@
 #ifndef DEBUG
     #define DEBUG 0
 #endif
+#ifndef DBG_LOC
+    #define DBG_LOC 0
+#endif
 #ifndef DBG_ACTIVE
     #define DBG_ACTIVE 0
 #endif

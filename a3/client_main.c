@@ -384,6 +384,7 @@ int handle_register_req()
     rdata = (struct register_msgdata *)cmh->msgdata;
 
     /* udp port: required */
+    /* TODO: figure out if we have to byte-swap this or not */
     rdata->udp_port = htons(client_udp_port);
 
     /* member name */
@@ -662,7 +663,8 @@ int init_client()
     
     /* Make room for message buffer */
     if ((buf = (char *)malloc(MAX_MSG_LEN)) == 0) {
-        err_quit("%s: malloc failed\n", __func__);
+        fprintf(stderr, "%s: malloc failed\n", __func__);
+        exit(1);
     }
 
     /* by casting, cmh points to the beginning of the memory block, and header
@@ -674,17 +676,24 @@ int init_client()
     tcp_hints.ai_family = AF_INET;
     tcp_hints.ai_socktype = SOCK_STREAM;
 
-    /* stringify server ports for getaddrinfo */
-    sprintf(server_tcp_port_str, "%d", server_tcp_port);
-    sprintf(server_udp_port_str, "%d", server_udp_port);
-
 #ifdef USE_LOCN_SERVER
 
     /* 0. Get server host name, port numbers from location server.
-    *    See retrieve_chatserver_info() in client_util.c
-    */
+     *    See retrieve_chatserver_info() in client_util.c
+     */
+    if((retrieve_chatserver_info(server_host_name, &server_tcp_port,
+        &server_udp_port) != 0))
+    {
+        /* Freak out, or retry or something */
+        fprintf(stderr, "%s: error contacting location server\n", __func__);
+        exit(1);
+    };
 
 #endif
+
+    /* stringify server ports for getaddrinfo */
+    sprintf(server_tcp_port_str, "%d", server_tcp_port);
+    sprintf(server_udp_port_str, "%d", server_udp_port);
 
     /********************************************
      * Initialization to allow UDP-based chat messages to chat server 

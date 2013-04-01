@@ -8,7 +8,7 @@ KILL_CMD := killall -v -u $(ME)
 QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ' | sed 's/^/-q /')
 
 CC = gcc
-CFLAGS = -Wall -g -DDEBUG -DDBG_ACTIVE #-DDBG_TCP  -DDBG_UDP -DDBG_RCV # -DUSE_LOCN_SERVER
+CFLAGS = -Wall -g -DDEBUG -DDBG_LOC -DDBG_ACTIVE -DUSE_LOCN_SERVER -DDBG_RCV #-DDBG_TCP -DDBG_UDP
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
