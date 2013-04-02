@@ -708,7 +708,7 @@ int create_udp_sender() {
  */
 int init_client()
 {
-    int tries = 3;
+    int ret = 0;
 
     /* Make room for message buffer */
     if ((buf = (char *)malloc(MAX_MSG_LEN)) == 0) {
@@ -747,20 +747,14 @@ int init_client()
     /********************************************
      * Initialization to allow UDP-based chat messages to chat server 
      */
-    retrycall(create_udp_sender(), tries, 0, -1);
-
-    /********************************************
-     * Spawn receiver process - see create_receiver() in this file.
-     */
-    debug_sub_print(DBG_RCV, "%s: init receiver process...\n",
-        __func__);
-    retrycall(create_receiver(), tries, 0, -1);
-
+    if ((ret = create_udp_sender()) != 0) {
+        fprintf(stderr, "Could not create UDP socket\n");
+    } else if ((ret = handle_register_req()) != 0) {
     /** Send register request ******************/
-    retrycall(handle_register_req(), tries, 0, -1);
+        fprintf(stderr, "Could not register on server\n");
+    }
 
-    return 0;
-
+    return ret;
 }
 
 /* Return 0 on success */
@@ -785,7 +779,7 @@ int handle_chatmsg_input(char *inputdata)
     chat->msg_len = /*htons*/(sizeof(struct chat_msghdr) + strlen(inputdata));
 
     retrycall((bytes = write(udp_sock, buf, /*ntohs*/(chat->msg_len))),\
-        tries, 0, errno);
+        tries, (chat->msg_len), errno);
     debug_sub_print(DBG_UDP, "%s: %dB written\n", __func__, bytes);
 
     free(buf);
@@ -799,7 +793,7 @@ int handle_chatmsg_input(char *inputdata)
 * You can change this function in any way you like.
 *
 */
-void handle_command_input(char *line)
+int handle_command_input(char *line)
 {
     char cmd = line[0]; /* single character identifying which command */
     int len = 0;
@@ -818,7 +812,7 @@ void handle_command_input(char *line)
         if (strlen(line) != 0) {
             printf("Error in command format: !%c should not be followed "
                 "by anything.\n",cmd);
-            return;
+            return 0;
         }
         break;
 
@@ -831,7 +825,7 @@ void handle_command_input(char *line)
             if (line[0] != ' ') {
                 printf("Error in command format: !%c should be followed "
                     "by a space and a room name.\n",cmd);
-                return;
+                return 0;
             }
             line++; /* skip space before room name */
 
@@ -840,19 +834,19 @@ void handle_command_input(char *line)
             if (len != goodlen) {
                 printf("Error in command format: line contains extra "
                     "whitespace (space, tab or carriage return)\n");
-                return;
+                return 0;
             }
             if (len > allowed_len) {
                 printf("Error in command format: name must not exceed %d "
                     "characters.\n",allowed_len);
-                return;
+                return 0;
             }
         }
         break;
 
     default:
         printf("Error: unrecognized command !%c\n",cmd);
-        return;
+        return 0;
         break;
     }
 
@@ -860,7 +854,6 @@ void handle_command_input(char *line)
     do {
         switch(cmd) {
             case 'r':
-          //  retrycall(call,countvar,accept,failret)
                 result = handle_room_list_req();
                 break;
 
@@ -886,25 +879,19 @@ void handle_command_input(char *line)
         }
         if (result) {
             tries--;
-            printf("%s: retrying...\n", __func__);
+            fprintf(stderr, "%s: error, retrying...\n", __func__);
             sleep(RETRY_PAUSE);
         } 
     } while((result != 0) && (tries > 0));
 
-    /* Currently, we ignore the result of command handling.
-    * TODO: You may want to change that.
-    */
-    if (tries == 0) {
-        fprintf(stderr, "%s: ran out of retries, quitting.\n", __func__);
-        shutdown_clean(1);
-    }
-
-    return;
+    /* Error if we ran out of retries */
+    return (tries == 0)? result : 0;
 }
 
-void main_loop() {
+int main_loop() {
 #define STDIN 0
 
+    int ret = 0, tries;
     struct timeval to;
     char *newline;
     int bytes, buf_idx = 0;
@@ -921,8 +908,8 @@ void main_loop() {
         /* If we've not seen the server in KA_TIMEOUT seconds, send
          * a keepalive message. */
         if ((time(NULL) - last_seen) > KA_TIMEOUT) {
-            /* TODO: handle failure here */
-            send_keepalive();
+            tries = 3;
+            retrycall(send_keepalive(), tries, 0, -1);
         }
 
 
@@ -963,9 +950,14 @@ void main_loop() {
                     *newline = '\0';
 
                     if (buf[0] == '!') {
-                        handle_command_input(&buf[1]);
+                        ret = handle_command_input(&buf[1]);
                     } else {
-                        handle_chatmsg_input(buf);
+                        ret = handle_chatmsg_input(buf);
+                    }
+
+                    if (ret) {
+                        fprintf(stderr, "Error communicating with server\n");
+                        return ret;
                     }
                     
                     PROMPT();
@@ -1020,6 +1012,7 @@ void main_loop() {
 
 int main(int argc, char **argv)
 {
+    int ret = -1, tries;
     char option;
 
     /* we want unbuffered output */
@@ -1063,9 +1056,26 @@ int main(int argc, char **argv)
 
 #endif /* USE_LOCN_SERVER */
 
-    init_client();
+    /********************************************
+     * Spawn receiver process - see create_receiver() in this file.
+     */
+    debug_sub_print(DBG_RCV, "%s: init receiver process...\n",
+        __func__);
 
-    main_loop();
+    if ((create_receiver() == -1)) {
+        fprintf(stderr, "Could not create receiver process\n");
+        exit(1);
+    }
 
+    while (ret != 0) {
+        tries = 3;
+        retrycall(init_client(), tries, 0, -1);
+        ret = main_loop();
+        if (ret) {
+            fprintf(stderr, "Trying to reconnect...\n");
+        }
+    }
+
+    shutdown_clean(ret);
     return 0;
 }
