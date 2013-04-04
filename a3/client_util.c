@@ -65,7 +65,7 @@ static char *skip_http_headers(char *buf)
 }
 
 
-int retrieve_chatserver_info(char *chatserver_name,
+int _retrieve_chatserver_info(char *chatserver_name,
     u_int16_t *tcp_port, u_int16_t *udp_port)
 {
     int locn_socket_fd;
@@ -188,7 +188,7 @@ int retrieve_chatserver_info(char *chatserver_name,
          * back from the server.
          */
         fprintf(stderr, "%s: unexpected response from server\n", __func__);
-        return ENOMSG;
+        return EPROTO; /* protocol error */
     }
 
     debug_sub_print(DBG_LOC, "%s: returning\n", __func__);
@@ -197,3 +197,103 @@ int retrieve_chatserver_info(char *chatserver_name,
     return 0;
 
 }
+
+/* Performs _retrieve_chaterver_info() while trying to cope with
+ * some transient failures.
+ *
+ * Retries are governed by macros RETRY_COUNT and RETRY_PAUSE
+ * (with exponential backoff on subsequent retries)
+ */
+int retrieve_chatserver_info(char *chatserver_name,
+    u_int16_t *tcp_port, u_int16_t *udp_port)
+{
+    int result = -1,
+        retries = RETRY_COUNT,
+        pause = RETRY_PAUSE;
+
+    /* Bump the number of retries to accomodate the first
+     * run through the loop (0 retries == 1 execution) */
+    retries++;
+    while ((retries-- >=0) && 
+        (result =
+        _retrieve_chatserver_info(chatserver_name, tcp_port, udp_port))
+        != 0) {
+
+        switch (result) {
+            case 0: /* success */
+                return 0;
+            case_RETRYABLE /* See client.h */
+                /* Retry */
+                //fprintf(stderr, ".");
+                sleep(pause);
+                pause *= 2;
+                break;
+            default:
+                /* Don't know what to do with these cases */
+                //fprintf(stderr, "\n");
+                debug_sub_print(DBG_FAULT, "%s: default: %d\n", 
+                    __func__, result);
+                return result;
+                break;
+        }
+    }
+
+    return result;
+}
+
+/* Wrap the handle_XXX functions with some retrying logic
+ * this is intended only to cover some transient network
+ * errors. Logic specific to the handlers must be implemented
+ * elsewhere.
+ *
+ * This is a bit dicey, but most of the functions we are
+ * interested in either take a single char* argument or
+ * none at all. Here we assume that if *arg is NULL,
+ * the function is one of those with no arguments.
+ *
+ * Retries are governed by (number of) retries and pause (in
+ * seconds) with exponential backoff on successive retries.
+ */
+int retry_handler(int (*handler)(char*), char *arg,
+    int *retries, int *pause)
+{
+
+    int result = -1;
+
+    /* Bump the number of retries to accomodate the first
+     * run through the loop (0 retries == 1 execution) */
+    (*retries)++;
+    while ((*retries)-- >=0) {
+
+        /* Make call */
+        if (arg) {
+            result = handler(arg);
+        } else {
+            /* Cast to no-args and call */
+            result = ((int (*)())handler)();
+        }
+
+        switch (result) {
+            case 0: /* success */
+                return 0;
+            case_RETRYABLE /* See client.h */
+                /* Retry */
+                //fprintf(stderr, ".");
+                sleep(*pause);
+                (*pause) *= 2;
+                break;
+            default:
+                /* Don't know what to do with these cases */
+                //fprintf(stderr, "\n");
+                debug_sub_print(DBG_FAULT, "%s: default: %d\n", 
+                    __func__, result);
+                return result;
+                break;
+        }
+
+    }
+
+    return result;
+}
+
+

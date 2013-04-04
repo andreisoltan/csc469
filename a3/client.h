@@ -23,6 +23,10 @@
 
 #include "defs.h"
 
+/* Map command type, c, to response types */
+#define CODE_SUCC(c) ((c)+1)
+#define CODE_FAIL(c) ((c)+2)
+
 /* debug junk *******************************************************/
 
 /* Flags for debug printing. Define more as needed. */
@@ -31,6 +35,9 @@
 #endif
 #ifndef DBG_LOC
     #define DBG_LOC 0
+#endif
+#ifndef DBG_FAULT
+    #define DBG_FAULT 0
 #endif
 #ifndef DBG_ACTIVE
     #define DBG_ACTIVE 0
@@ -78,6 +85,11 @@ typedef struct our_msgbuf {
   struct body_s body;
 } msg_t;
 
+/* For keepalive */
+#ifndef KA_MINUTES
+    #define KA_MINUTES 2
+#endif
+#define KA_TIMEOUT ( 60 * KA_MINUTES )
 
 #define CTRL_TYPE 1 /* mtype for messages to control process */
 #define RECV_TYPE 2 /* mtype for messages to receiver process */
@@ -101,16 +113,39 @@ typedef struct our_msgbuf {
 #define BIND_FAILED   12
 #define NAME_FAILED   13
 
-/* Failure codes for client. */
-#define SERVER_FULL    1
-#define NAME_IN_USE    2
-#define BOGUS_RESPONSE 3
-#define SERVER_DOWN    4
-#define RETRY_SERVER   5
-#define REG_FAILED     6
+/* Failure codes for client -- we use high numbers to avoid
+ * conflicting with errno values. */
+#define SERVER_FULL     501
+#define NAME_IN_USE     502
+#define BOGUS_RESPONSE  503
+#define SERVER_DOWN     504
+#define RETRY_SERVER    505
+#define REG_FAILED      506
+#define ID_INVALID      507
+#define COMMAND_FAIL    508
+#define COMMAND_SUCC    0
+#define MAX_ROOMS       509
+#define ROOM_EXISTS     510
+#define ROOM_NOT_FOUND  511
+#define ROOM_NAME_TOOOO_LOOOONG 512
+#define ROOM_FULL       513
+#define ZERO_ROOMS      514
 
-#define RETRY_PAUSE     2
+/* Fault handling */
+#define RETRY_PAUSE    1 /* base pause between retries, we back this off */
+#define RETRY_COUNT    3 /* retry attempts */
+
+/* Connection errors we'd like to retry on */
+#define case_RETRYABLE \
+            case EAI_AGAIN:     /* temporary getaddrinfo failure */ \
+            case EAGAIN:        /* maybe a transient failure */ \
+            case EPROTO:        /* locn server response in unexpected format */ \
+            case EHOSTUNREACH:  /* maybe a transient failure */ \
+            case ENETDOWN:      /* maybe a transient failure */ \
+            case ECOMM:         /* Communication error on send */ \
+            case ENETRESET:     /* maybe a transient failure */ \
+            case ENETUNREACH:   /* maybe a transient failure */
 
 extern char *optarg; /* For option parsing */
-
+extern int retry_handler(int (*handler)(char*), char *arg, int *retries, int *pause);
 extern int retrieve_chatserver_info(char *chatserver_name, u_int16_t *tcp_port, u_int16_t *udp_port);

@@ -9,7 +9,6 @@
  * Please report bugs/comments to demke@cs.toronto.edu
  *
  */
-#define _GNU_SOURCE /* for memrchr from string.h */
 
 #include <arpa/inet.h>
 #include <errno.h>
@@ -28,50 +27,35 @@
 
 static char *option_string = "h:t:u:n:";
 
+/* For incoming/outgoing packets (shared because we're single-threaded) */
 char *buf;
 
 /* For detecting server going down */
-#ifndef KA_MINUTES
-    #define KA_MINUTES 2
-#endif
-#define KA_TIMEOUT ( 60 * KA_MINUTES )
 time_t last_seen = 0;
 
-/*
- * For TCP connection with server
- */
-int tcp_sock, bytes;
-#define PORT_STR_LEN 7
+/* For TCP control message connection with server */
+#define PORT_STR_LEN 7 /* max length of a port number string */
 char server_tcp_port_str[PORT_STR_LEN];
+int tcp_sock, bytes;
 struct addrinfo tcp_hints;
 struct addrinfo *ai_result;
 struct control_msghdr *cmh; /* common header pointer */
-
-/*
- * For UDP messages to server
- */
-int udp_sock;
-char server_udp_port_str[PORT_STR_LEN];
-struct addrinfo udp_hints;
-
-
-/* For communication with chat server */
-/* These variables provide some extra clues about what you will need to
- * implement.
- */
-char server_host_name[MAX_HOST_NAME_LEN];
-
-/* For control messages */
-u_int16_t server_tcp_port;
 struct sockaddr_in server_tcp_addr;
+u_int16_t server_tcp_port;
 
-/* For chat messages */
-u_int16_t server_udp_port;
-struct sockaddr_in server_udp_addr;
+/* For UDP chat messages to server */
+char server_udp_port_str[PORT_STR_LEN];
 int udp_socket_fd;
+struct addrinfo udp_hints;
+struct sockaddr_in server_udp_addr;
+u_int16_t server_udp_port;
+
+/* Server connection state */
+char server_host_name[MAX_HOST_NAME_LEN];
+char server_room_name[MAX_ROOM_NAME_LEN+1];
 
 /* Needed for REGISTER_REQUEST */
-char member_name[MAX_MEMBER_NAME_LEN];
+char member_name[MAX_MEMBER_NAME_LEN+1];
 u_int16_t client_udp_port; 
 
 /* Initialize with value returned in REGISTER_SUCC response */
@@ -128,20 +112,13 @@ int ctrl2rcvr_qid;
  *  call - function call, or expression
  *  accept - return val to exit retry loop
  */
-#define retrycall(call,countvar,accept,failret) \
+#define RETRYCALL(call,countvar,accept,failret) \
 while ( (countvar-- > 0) && ((call) != (accept)) ) {\
     printf("%s: retrying...\n", __func__); sleep(RETRY_PAUSE); \
 } \
 if (countvar < 0) {return (failret);}
 
 /************* FUNCTION DEFINITIONS ***********/
-
-/* Updates the last_seen time for the server */
-void seen_server() {
-    last_seen = time(NULL);
-    debug_sub_print(DBG_ACTIVE, "%s: last_seen: %d\n",
-        __func__, (int) last_seen);
-}
 
 static void usage(char **argv) {
 
@@ -374,272 +351,281 @@ void close_tcp() {
     close(tcp_sock); 
 }
 
+/* Updates the last_seen time for the server */
+void seen_server() {
+    last_seen = time(NULL);
+    debug_sub_print(DBG_ACTIVE, "%s: last_seen: %d\n",
+        __func__, (int) last_seen);
+}
+
+/* Updates our copy of the current room name */
+void update_room_state(char *new_room) {
+    strncpy(server_room_name, new_room, MAX_ROOM_NAME_LEN);
+    /* make sure our string is still terminated */
+    server_room_name[MAX_ROOM_NAME_LEN] = '\0';
+}
+
+/* Prepend an underscore to the current username -- used in the case that
+ * we're reconnecting to a server after a failure and our name is already
+ * in use. */
+void bump_username() {
+    int i;
+
+    debug_sub_print(DBG_FAULT, "Changing name from '%s' to ", member_name);
+
+    /* copy each character at i to i+1 */
+    for (i = MAX_MEMBER_NAME_LEN; i > 0; i--) {
+        member_name[i] = member_name[i-1];
+    }
+
+    member_name[0] = '_';
+    member_name[MAX_MEMBER_NAME_LEN] = '\0';
+
+    debug_sub_print(DBG_FAULT, "'%s'\n", member_name);
+}
+
+/******************************************************************************
+ * COMMAND HANDLERS ***********************************************************
+ *****************************************************************************/
+
+int generic_command(int msg_type, char *arg, char *buf) {
+
+    int ret = 0, bytes = 0;
+    struct control_msghdr *cmh = (struct control_msghdr *) buf;
+
+    memset(buf, 0, MAX_MSG_LEN);
+    cmh->msg_type = msg_type;
+    cmh->member_id = /*htons*/(member_id);
+    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr));
+
+    if (arg) {
+        strcpy((char *)(cmh->msgdata), arg);
+        cmh->msg_len += strlen(arg);
+    }
+    
+    if (msg_type == REGISTER_REQUEST) {
+        struct register_msgdata *rdata;
+        rdata = (struct register_msgdata *)cmh->msgdata;
+        /* send registration data */
+        rdata->udp_port = htons(client_udp_port);
+        strcpy((char *)rdata->member_name, member_name);
+        cmh->msg_len +=
+            sizeof(struct register_msgdata) + strlen(member_name);
+    }
+
+    /* OPEN */
+    if ((ret = open_tcp()) != 0) {
+        return ret;
+    }   
+
+    /* WRITE */
+    if ((bytes = write(tcp_sock, buf, /*ntohs*/(cmh->msg_len))) == -1) {
+        ret = errno;
+        fprintf(stderr, "%s: write: %s\n", __func__, strerror(errno));
+        return ret;
+    } else {
+        seen_server();
+    }   
+
+    debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
+
+    /* Response expected? */
+    if (msg_type < MEMBER_KEEP_ALIVE) {
+        if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) {
+            ret = errno;
+            fprintf(stderr, "%s: recv'd: %s\n", __func__, strerror(errno));
+            return ret;
+        }
+        close_tcp();
+        debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
+
+        if ((cmh->msg_type) == CODE_SUCC(msg_type)) {
+            return COMMAND_SUCC;
+        } else if ((cmh->msg_type) == CODE_FAIL(msg_type)) {
+            if ((strstr((char *) (cmh->msgdata), "Member id invalid!"))
+                == (char *) (cmh->msgdata))
+            {
+                return ID_INVALID;
+            }
+            return COMMAND_FAIL;
+        } else {
+            fprintf(stderr, "Unexpected response (%d)\n", cmh->msg_type);
+            return BOGUS_RESPONSE;
+        }
+    } else {
+        close_tcp();
+    }
+    return ret;
+}
 
 /*********************************************************************
  * We define one handle_XXX_req() function for each type of 
  * control message request from the chat client to the chat server.
- * These functions should return 0 on success, and a negative number 
- * on error.
+ * These functions should return 0 on success.
  *
  * These functions all assume that buf points to a block of memory at
  * least MAX_MSG_LEN in size.
  */
 
-
 int handle_register_req()
 {
-
-    int ret = 0;
-
-    /*register data area pointer */
-    struct register_msgdata *rdata;
-
-    /********************************************
-     * Register with chat server
-     */
+    int ret = generic_command(REGISTER_REQUEST, NULL, buf);
     debug_sub_print(DBG_TCP, "%s: Registering with server...\n",
         __func__);
 
-    /* Construct a REGISTER_REQUEST ************/
-
-    /* initialize the block to all 0 */
-    memset(buf, 0, MAX_MSG_LEN);
-
-    /* message type */
-    cmh->msg_type = REGISTER_REQUEST;
-
-    /* rdata points to the data area */
-    rdata = (struct register_msgdata *)cmh->msgdata;
-
-    /* udp port: required */
-    /* TODO: figure out if we have to byte-swap this or not */
-    rdata->udp_port = htons(client_udp_port);
-
-    /* member name */
-    strcpy((char *)rdata->member_name, member_name);
-
-    /* message length */
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
-      sizeof(struct register_msgdata) +
-      strlen(member_name));
-
-    /* Contact server, send the message */
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-
-    /* Catch reply */
-    TCP_RECV_BUF();
-    close_tcp();
-
-    switch (cmh->msg_type) {
-        case REGISTER_SUCC:
+    switch (ret) {
+        case COMMAND_SUCC:
             printf("Successfully registered '%s' as member #%d\n",
                 member_name, (member_id = /*ntohs*/(cmh->member_id)));
             break;
-        case REGISTER_FAIL:
+        case COMMAND_FAIL:
             fprintf(stderr, "Registration failed: %s\n",
                 (char *) (cmh->msgdata));
-            /* TODO: might have failed on full server, might have failed
-             * on name already in use
-             */
-            ret = REG_FAILED;
-            /*shutdown_clean(0);*/
-            break;
+            /* Determine cause of failure with a great big smelly
+             * HAAAAAAAAAAAAAAAAAAAAAAAAAAACK. A nice protocol would
+             * allow us to distinguish these cases without string-
+             * compares */
+            if ((strstr((char *) (cmh->msgdata), "Name"))
+                == (char *) (cmh->msgdata))
+            {
+                /* If we find "Name" at the beginning of the message
+                 * our name is in use. */
+                ret = NAME_IN_USE;
+            } else {
+                /* Only other case for rejection (based on examination
+                 * of the server code) is if the server is full. */
+                ret = SERVER_FULL;
+            }
         default:
-            fprintf(stderr, "%s: unexpected response to "
-                "REGISTER_REQUEST: %d\n",
-                __func__, cmh->msg_type);
-            ret = BOGUS_RESPONSE;
-            break;
+            return ret;
     }
-    
     return ret;
 }
 
-int handle_room_list_req()
-{
-    int ret = 0;
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = ROOM_LIST_REQUEST;
-    cmh->member_id = /*htons*/(member_id);
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr));
-
-    /* Open connection, send request */
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-
-    /* Catch, handle response */
-    TCP_RECV_BUF();
-    close_tcp();
-
-    switch (cmh->msg_type) {
-        case ROOM_LIST_SUCC:
+int handle_room_list_req() {
+    int ret = generic_command(ROOM_LIST_REQUEST, NULL, buf);
+    switch(ret) {
+        case COMMAND_SUCC:
             printf("%s\n", (char *) (cmh->msgdata));
             break;
-        case ROOM_LIST_FAIL:
-            printf("Could not list rooms: %s\n", (char *) (cmh->msgdata)); 
+        case COMMAND_FAIL:
+            printf("Could not list rooms: %s\n", (char *) (cmh->msgdata));
             break;
         default:
-            fprintf(stderr, "%s: unexpected response to ROOM_LIST_REQUEST: %d\n",
-                __func__, cmh->msg_type);
-            ret = BOGUS_RESPONSE;
-            break;
+            return ret;
     }
-
-    return ret;
+    return 0;
 }
 
-int handle_member_list_req(char *room_name)
-{
-    int ret = 0;
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = MEMBER_LIST_REQUEST;
-    cmh->member_id = /*htons*/(member_id);
-    strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
-        strlen(room_name));
-
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-
-    /* Catch, handle response */
-    TCP_RECV_BUF();
-    close_tcp();
-
-    switch (cmh->msg_type) {
-        case MEMBER_LIST_SUCC:
+int handle_member_list_req(char *room_name) {
+    int ret = generic_command(MEMBER_LIST_REQUEST, room_name, buf);
+    switch (ret) {
+        case COMMAND_SUCC:
             printf("%s\n", (char *) (cmh->msgdata));
             break;
-        case MEMBER_LIST_FAIL:
+        case COMMAND_FAIL:
             printf("Could not list members in room '%s': %s\n",
                 room_name, (char *) (cmh->msgdata));
             break;
         default:
-            fprintf(stderr, "%s: unexpected response to "
-                "MEMBER_LIST_REQUEST: %d\n",
-                __func__, cmh->msg_type);
-            ret = BOGUS_RESPONSE;
-            break;
+            return ret;
     }
-
-    return ret;
+    return 0;
 }
 
 int handle_switch_room_req(char *room_name)
 {
-    int ret = 0;
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = SWITCH_ROOM_REQUEST;
-    cmh->member_id = /*htons*/(member_id);
-    strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
-        strlen(room_name));
-
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-
-    /* Catch, handle response */
-    TCP_RECV_BUF();
-    close_tcp();
-
-    switch (cmh->msg_type) {
-        case SWITCH_ROOM_SUCC:
+    int ret = generic_command(SWITCH_ROOM_REQUEST, room_name, buf);
+    switch (ret) {
+        case COMMAND_SUCC:
             printf("Switched to room '%s'\n", room_name);
+            update_room_state(room_name);
             break;
-        case SWITCH_ROOM_FAIL:
+        case COMMAND_FAIL:
             printf("Could not switch to room '%s': %s\n",
                 room_name, (char *) (cmh->msgdata));
+
+            /* Classify the failure... */
+            if ((strstr((char *) (cmh->msgdata), "No room avail"))
+                == (char *) (cmh->msgdata))
+            {   /* "No room available yet!" */
+                return ZERO_ROOMS;
+            } else if ((strstr((char *) (cmh->msgdata), "Room not found"))
+                == (char *) (cmh->msgdata))
+            {   /* "Room not found!" */
+                return ROOM_NOT_FOUND;
+            } else if ((strstr((char *) (cmh->msgdata), "Room is full"))
+                == (char *) (cmh->msgdata))
+            {   /* "Room is full!" */
+                return ROOM_FULL;
+            }
             break;
         default:
-            fprintf(stderr, "%s: unexpected response to SWITCH_ROOM_REQUEST: %d\n",
-                __func__, cmh->msg_type);
-            ret = BOGUS_RESPONSE;
-            break;
+            return ret;
     }
-
-    return ret;
+    return 0;
 }
 
 int handle_create_room_req(char *room_name)
 {
-    int ret = 0;
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = CREATE_ROOM_REQUEST;
-    cmh->member_id = /*htons*/(member_id);
-    strcpy((char *)(cmh->msgdata), room_name);
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr) +
-        strlen(room_name));
-
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-
-    /* Catch, handle response */
-    TCP_RECV_BUF();
-    close_tcp();
-
-    switch (cmh->msg_type) {
-        case CREATE_ROOM_SUCC:
+    int ret = generic_command(CREATE_ROOM_REQUEST, room_name, buf);
+    switch (ret) {
+        case COMMAND_SUCC:
             printf("Room '%s' created.\n", room_name);
             break;
-        case CREATE_ROOM_FAIL:
+        case COMMAND_FAIL:
             printf("Could not create room '%s': %s\n",
                 room_name, (char *) (cmh->msgdata));
+
+            /* Classify the failure... */
+            if ((strstr((char *) (cmh->msgdata), "Number of rooms"))
+                == (char *) (cmh->msgdata))
+            {   /* "Number of rooms reached maximum!" */
+                ret = MAX_ROOMS;
+            } else if ((strstr((char *) (cmh->msgdata), "Room exists"))
+                == (char *) (cmh->msgdata))
+            {   /* "Room exists!" */
+                ret = ROOM_EXISTS;
+            } else { /* Only other possibility based on server code */
+                ret = ROOM_NAME_TOOOO_LOOOONG;
+            }
             break;
         default:
-            fprintf(stderr, "%s: unexpected response to CREATE_ROOM_REQUEST: %d\n",
-                __func__, cmh->msg_type);
-            ret = BOGUS_RESPONSE;
-            break;
+            return ret;
     }
-
-    return ret;
+    return 0;
 }
 
 
 int handle_quit_req() {
-   
     int ret = 0; 
     printf("Quitting server.\n");
-
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = QUIT_REQUEST;
-    cmh->member_id = /* htons */(member_id);
-    cmh->msg_len = /* htons */(sizeof(struct control_msghdr));
-
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-    close_tcp();
-
+    ret = generic_command(QUIT_REQUEST, NULL, buf);
     shutdown_clean(0); /* exits */
     return ret;
 }
 
-/* If the send of this packet is successful, TCP_SEND_BUF will
- * have updated the last_seen time. If not it currently will
- * quit.
- */
-int send_keepalive() {
-    
-    int ret = 0;
-    /* Set up request */
-    memset(buf, 0, MAX_MSG_LEN);
-    cmh->msg_type = MEMBER_KEEP_ALIVE;
-    cmh->member_id = /*htons*/(member_id);
-    cmh->msg_len = /*htons*/(sizeof(struct control_msghdr));
-
-    debug_sub_print(DBG_ACTIVE, "%s: sending.", __func__);
-
-    if ((ret = open_tcp()) != 0) return ret;
-    TCP_SEND_BUF();
-    close_tcp();
-
+/* If the send of this packet is successful, generic_command will
+ * have updated the last_seen time. */
+int handle_keepalive() {
+    int ret = generic_command(MEMBER_KEEP_ALIVE, NULL, buf);
+    debug_sub_print(DBG_ACTIVE, "Ah, ah, ah, ah, staying alive\n");
     return ret;
 }
 
+/* Decides whether or not to send a keepalive packet */
+int check_keepalive() {
+    int retries = RETRY_COUNT,
+        pause = RETRY_PAUSE,
+        result = 0;
+
+    if ((time(NULL) - last_seen) > KA_TIMEOUT)
+        result = retry_handler(handle_keepalive, NULL, &retries, &pause);
+
+    return result;
+}
+
+/* end COMMAND HANDLERS ******************************************************/
 
 /* Returns 0 on success, an errno value on failure */
 int create_udp_sender() {
@@ -670,7 +656,7 @@ int create_udp_sender() {
 
     for (srv = ai_result; srv != NULL; srv = srv ->ai_next) {
 
-        if ((udp_sock = socket(srv->ai_family, srv->ai_socktype,
+        if ((udp_socket_fd = socket(srv->ai_family, srv->ai_socktype,
             srv->ai_protocol)) == -1) {
             /* unrecoverable, try next result */
             ret = errno;
@@ -679,7 +665,7 @@ int create_udp_sender() {
             continue;
         }
     
-        if ((connect(udp_sock, srv->ai_addr, srv->ai_addrlen)) == -1) {
+        if ((connect(udp_socket_fd, srv->ai_addr, srv->ai_addrlen)) == -1) {
             ret = errno;
             /* TODO: try to handle before going to next result */
             debug_sub_print(DBG_UDP, "%s: connect: %s\n",
@@ -702,13 +688,79 @@ int create_udp_sender() {
 
 }
 
+/* Attempts to rejoin the room we were in prior to being disconnected
+ * ASSUMES THAT WE ARE ALREADY RECONNECTED AND THAT THE ROOM NAME
+ * IS IN server_room_name
+ *
+ * create is treated as a boolean -- to attempt creation of the room
+ * or not
+ * 
+ * Since we're making a best effort, we'll only pass along failure
+ * codes for errors we've not considered here. If there was no room for
+ * us to create our room for instance, that is ok -- if there is a
+ * network failure our caller should know */
+int rejoin(char create) {
+    int retries = RETRY_COUNT,
+        pause = RETRY_PAUSE,
+        ret = 0;
+
+    /* Try switching to the room we were in */
+    ret = retry_handler(handle_switch_room_req,
+        server_room_name, &retries, &pause);
+
+    switch (ret) {
+        case COMMAND_SUCC:
+            /* cool, done */
+            return ret;
+        case ZERO_ROOMS:
+        case ROOM_NOT_FOUND:
+            if (create) {
+                /* try to recreate, then join */
+                printf("Attempting to recreate room '%s'...\n",
+                    server_room_name);
+                ret = retry_handler(handle_create_room_req, server_room_name,
+                    &retries, &pause);
+
+                switch (ret) {
+                    case COMMAND_SUCC:
+                    case ROOM_EXISTS:
+                        /* cool, retry join */
+                        return rejoin(FALSE);
+                    case MAX_ROOMS:
+                    case ROOM_NAME_TOOOO_LOOOONG:
+                        /* can't, oh well */
+                        ret = 0;
+                        break;
+                    default:
+                        fprintf(stderr, "Could not recreate room '%s'.\n",
+                            server_room_name);
+                        break;
+                }
+            }
+            break;
+        case ROOM_FULL:
+            /* can't join */
+            ret = 0;
+            break;
+        default:
+            /* some other problem */
+            fprintf(stderr, "Could not rejoin room '%s'.\n",
+                server_room_name);
+            break;
+    }
+
+    return ret;
+}
+
 
 /*
  * Set up the client before accepting input.
  */
 int init_client()
 {
-    int ret = 0;
+    int retries = RETRY_COUNT,
+        pause = RETRY_PAUSE, 
+        ret = 0;
 
     /* Make room for message buffer */
     if ((buf = (char *)malloc(MAX_MSG_LEN)) == 0) {
@@ -749,9 +801,43 @@ int init_client()
      */
     if ((ret = create_udp_sender()) != 0) {
         fprintf(stderr, "Could not create UDP socket\n");
-    } else if ((ret = handle_register_req()) != 0) {
+        return ret;
+    }
+    
     /** Send register request ******************/
-        fprintf(stderr, "Could not register on server\n");
+    while ((ret =
+        retry_handler(handle_register_req, NULL, &retries, &pause))
+        != 0)
+    {
+        switch (ret) {
+            case NAME_IN_USE:
+                // bump name, try again
+                bump_username();
+                break;
+            case SERVER_FULL:
+                shutdown_clean(0);
+                break;
+            default:
+#ifdef USE_LOCN_SERVER
+                if((retrieve_chatserver_info(server_host_name,
+                    &server_tcp_port, &server_udp_port) != 0))
+                {
+#endif 
+                    // unrecoverable, die
+                    shutdown_clean(1);
+                    break;
+#ifdef USE_LOCN_SERVER
+                }
+#endif
+        }
+    }
+
+    /* If we successfully registered, see if we've got a room
+     * name recorded -- if so we are reconnecting and we should
+     * try to get back into that same room */
+    if ((ret == 0) && (server_room_name[0] != 0)) {
+        printf("Attempting to rejoin room '%s'...\n", server_room_name);
+        ret = rejoin(TRUE);
     }
 
     return ret;
@@ -778,7 +864,7 @@ int handle_chatmsg_input(char *inputdata)
     strcpy((char *)(chat->msgdata), inputdata);
     chat->msg_len = /*htons*/(sizeof(struct chat_msghdr) + strlen(inputdata));
 
-    retrycall((bytes = write(udp_sock, buf, /*ntohs*/(chat->msg_len))),\
+    RETRYCALL((bytes = write(udp_socket_fd, buf, /*ntohs*/(chat->msg_len))),\
         tries, (chat->msg_len), errno);
     debug_sub_print(DBG_UDP, "%s: %dB written\n", __func__, bytes);
 
@@ -799,7 +885,8 @@ int handle_command_input(char *line)
     int len = 0;
     int goodlen = 0;
     int result = 0;
-    int tries = 3;
+    int retries = RETRY_COUNT,
+        pause = RETRY_PAUSE;
 
     line++; /* skip cmd char */
 
@@ -854,44 +941,53 @@ int handle_command_input(char *line)
     do {
         switch(cmd) {
             case 'r':
-                result = handle_room_list_req();
+                result = retry_handler(handle_room_list_req, NULL,
+                    &retries, &pause);
                 break;
-
             case 'c':
-                result = handle_create_room_req(line);
+                result = retry_handler(handle_create_room_req, line,
+                    &retries, &pause);
                 break;
 
             case 'm':
-                result = handle_member_list_req(line);
+                result = retry_handler(handle_member_list_req, line,
+                    &retries, &pause);
                 break;
 
             case 's':
-                result = handle_switch_room_req(line);
+                result = retry_handler(handle_switch_room_req, line,
+                    &retries, &pause);
                 break;
 
             case 'q':
-                result = handle_quit_req(); // does not return. Exits.
+                /* exits if successfull */
+                result = retry_handler(handle_quit_req, NULL,
+                    &retries, &pause);
                 break;
 
             default:
                 printf("Error !%c is not a recognized command.\n",cmd);
                 break;
         }
-        if (result) {
-            tries--;
+        if (result == ID_INVALID) {
+            /* We're no longer registered -- shouldn't be trying to
+             * resend requests, return now. */
+            return result;
+        } else if (result) {
+            retries--;
             fprintf(stderr, "%s: error, retrying...\n", __func__);
-            sleep(RETRY_PAUSE);
+            sleep(pause);
         } 
-    } while((result != 0) && (tries > 0));
+    } while((result != 0) && (retries > 0));
 
     /* Error if we ran out of retries */
-    return (tries == 0)? result : 0;
+    return (retries == 0)? result : 0;
 }
 
 int main_loop() {
 #define STDIN 0
 
-    int ret = 0, tries;
+    int ret = 0;
     struct timeval to;
     char *newline;
     int bytes, buf_idx = 0;
@@ -907,9 +1003,9 @@ int main_loop() {
 
         /* If we've not seen the server in KA_TIMEOUT seconds, send
          * a keepalive message. */
-        if ((time(NULL) - last_seen) > KA_TIMEOUT) {
-            tries = 3;
-            retrycall(send_keepalive(), tries, 0, -1);
+        if ((ret = check_keepalive()) != 0) {
+            fprintf(stderr, "Problem sending keepalive packet.\n");
+            return ret;
         }
 
 
@@ -1006,13 +1102,13 @@ int main_loop() {
         }
     }
 
-    free(buf);
-    return;
+    debug_print("%s: Hm, shouldn't be here.\n", __func__);
+    return -1;
 }
 
 int main(int argc, char **argv)
 {
-    int ret = -1, tries;
+    int ret = -1, tries = RETRY_COUNT;
     char option;
 
     /* we want unbuffered output */
@@ -1059,20 +1155,29 @@ int main(int argc, char **argv)
     /********************************************
      * Spawn receiver process - see create_receiver() in this file.
      */
-    debug_sub_print(DBG_RCV, "%s: init receiver process...\n",
-        __func__);
+    debug_sub_print(DBG_RCV, "%s: init receiver process...\n", __func__);
 
     if ((create_receiver() == -1)) {
         fprintf(stderr, "Could not create receiver process\n");
         exit(1);
     }
 
+    /********************************************
+     * Initialize client and start accepting input. 
+     */
+    server_room_name[0] = '\0'; 
     while (ret != 0) {
-        tries = 3;
-        retrycall(init_client(), tries, 0, -1);
-        ret = main_loop();
-        if (ret) {
-            fprintf(stderr, "Trying to reconnect...\n");
+        
+        tries = RETRY_COUNT;
+        while ((ret = init_client()) != 0) {
+            if (tries-- <= 0) {
+                fprintf(stderr, "Problems initiating connection. Quitting.\n");
+                shutdown_clean(ret);
+            }
+        }
+
+        if ((ret = main_loop())) {
+            fprintf(stderr, "Problem with server connection. Trying to reconnect...\n");
         }
     }
 
