@@ -109,7 +109,7 @@ before re-attempting the connection, and \mono{SERVER\_FULL} causes us to quit.
 \subsection{Connection re-establishment}
 In the event that we become disconnected and re-establish a connection with
 the server, our client will attempt to put us back into the same room we had
-been in when disconnected using rejoin(char). We first try simply changing to
+been in when disconnected using \mono{rejoin(char)}. We first try simply changing to
 the room -- if we get back \mono{ZERO\_ROOMS} or \mono{ROOM\_NOT\_FOUND} we will try to
 create it.
 
