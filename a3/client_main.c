@@ -954,7 +954,8 @@ int handle_command_input(char *line)
         }
 
         switch (result) {
-            /* Success, or errors that won't be helped by a resend */
+            /* Success, or errors that won't be helped by a resend
+             * or reconnection */
             case COMMAND_SUCC:
             case ROOM_NOT_FOUND:
             case MAX_ROOMS:
@@ -962,9 +963,9 @@ int handle_command_input(char *line)
             case ROOM_NAME_TOOOO_LOOOONG:
             case ROOM_FULL:
             case ZERO_ROOMS:
-            case_RETURN
                 return 0;
-                break;
+            case_RETURN /* We should return up to main and reconnect */
+                return result;
 /*
             case_RETRYABLE
                 retries--;
