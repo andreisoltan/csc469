@@ -1,0 +1,169 @@
+\documentclass{article}
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{framed}
+\usepackage{multicol}
+\usepackage{hyperref}
+\usepackage{float}
+
+\author{Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu
+\and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
+\title{CSC469: Assignment 3}
+\date{5 April, 2013}
+
+% Show paragraphs in table of contents
+\setcounter{tocdepth}{5}
+
+\lstset{
+    mathescape=false,
+    basicstyle=\small,
+    stringstyle=\ttfamily, % typewriter type for strings
+    showstringspaces=false } % no special string spaces
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{Introduction}
+Discuss design of our chat client
+Implemented all fault handling discussed in the handout also some
+naive-retrying for possible transient network failures.
+
+Some build parameters affecting the operation of our client are detailed
+in section \ref{sec:build}.
+
+\section{Basic operation}
+We've kept most of the structure of the interface as well as the broad
+strokes of the client's operation from the starter code which was
+provided to us.
+
+The server address and port numbers are obtained either from a location
+server or from the command-line (depending on the presence of the
+USE\_LOCN\_SERVER flag at build time) and the user must supply a name
+on the command-line.
+
+Once the connection parameters have been collected we start the
+receiver process. The existing xterm-launching infrastructure has been
+maintained. Once the receiver is up and running it begins listening
+on a UDP port of the operating system's choosing and reports the port
+number to the client process through their shared message queue.
+
+After communication with the receiver process, we try to connect to the
+server and then enter our main loop. A non-zero return value from the
+main loop causes us to attempt reconnection to the server. Repeated 
+failure of the connection attempts will cause us to exit.
+
+Once connected and registered we can send UDP chat messages from the
+client to the server, and the receiver process will listen for incoming
+chat messages from the server to display in its xterm.
+
+Our main loop is quite simple, much of it maintained from the starter code
+as mentioned earlier. We check the time of last contact with the server,
+deciding whether or not to send a keepalive message. We then
+poll standard input to see if the user has entered anything, copying it into
+a buffer if available until we've accumulated a whole line which will be
+dispatched to handle\_chatmsg\_input or handle\_command\_input. If there 
+was nothing to read from standard input, we check for messages in the
+queue from the receiver process.
+
+\section{Connection establishment}
+Our connection behaviour lives in the function init\_client.
+If built with USE\_LOCN\_SERVER our first order of business is to contact
+the location server using retrieve\_chatserver\_info. As with 
+retry\_handler (see sec \ref{func:retry}), retrieve\_chatserver\_info can
+make multiple attempts
+at its goal before returning, retrying if it encounters errors in
+case\_RETRYABLE (see sec \ref{def:case}) and returning if it either runs
+out of retry attempts or if it encounter an error that is not in.
+
+We wrap our call to handle\_register\_req in retry\_handler and also
+catch the errors NAME\_IN\_USE and SERVER\_FULL. In the event of a different
+error we try to contact the location server for new connection parameters.
+NAME\_IN\_USE is handled by prepending an underscore to the current username
+before re-attempting the connection, and SERVER\_FULL causes us to quit.
+
+\subsubsection{Connection re-establishment}
+In the event that we become disconnected and re-establish a connection with
+the server, our client will attempt to put us back into the same room we had
+been in when disconnected using rejoin(char). We first try simply changing to
+the room -- if we get back ZERO\_ROOMS or ROOM\_NOT\_FOUND we will try to
+create it.
+
+If the response to the creation request is COMMAND\_SUCC or ROOM\_EXIST we
+try again to switch to that room. In the case of any other returns
+(MAX\_ROOMS, ROOM\_NAME\_TOOOO\_LOOOONG, or another) we simply give up.
+
+\section{Connection maintenance}
+We wish to maintain a connection with the server even if our user is not
+actively issuing commands. In order to do this, we arrange for 
+MEMBER\_KEEP\_ALIVE messages to be sent during times of inactivity.
+
+As mentioned above, during the main input loop we check the current time
+against the recorded time of the last contact with the server. If it has
+been more than KA\_MINUTES minutes, we send a keepalive message. This message
+is sent using retry\_handler (see sec \ref{func:retry}) so it will make
+several attempts if there seem to be transient network issues.
+
+In order to minimize the number of keepalive messages that we send, we've
+also modified the receiver process to notify the client every time that it
+receives a chat message from the server. We open the message queue read/write
+from the receiver end rather than read only as given in the starter code.
+Upon notification from the receiver, the client updates its record of last
+contact with the server.
+
+In this way, clients connected to an active chat will not need to send 
+keepalive messages -- those in inactive chat sessions will still have their
+connection to the server tested regularly.
+
+\section{Utility functions}
+\subsection{retry\_handler(int (*handler)(char*), char *arg, int *retries, int *pause)}
+\label{func:retry}
+This function is used to wrap all of the functions dealing with command
+messages. The motivation is that we would like to have a simple way to 
+retry communication attempts that encounter transient errors. The errors
+triggering a retry can be seen in case\_RETRYABLE (sec\ref{def:case}).
+Any errors not in that list are passed immediately up to the caller.
+
+Because *retries and *pause are passed as pointers, the caller can see
+how many attempts were taken and has the option of handling special error
+cases before passing back in to retry\_handler.
+
+\subsection{generic\_command(int msg\_type, char *arg, char *buf)}
+Implements the general case of command message sending and receiving.
+
+Returns:
+\begin{description}
+    \item[some errno] if any of our calls set errno
+    \item{INVALID\_ID| if the server does not recognize our member id. This
+    will trigger a reconnection attempt.
+    \item[COMMAND\_SUCC] on success
+    \item[COMMAND\_FAIL] on failure
+    \item[BOGUS\_RESPONSE] on an unexpected reply
+\end{description}
+
+
+\section{Build parameters}
+\label{sec:build}
+\subsection{RETRY\_COUNT}
+Number of retry attempts. Default value is 4.
+\subsection{RETRY\_PAUSE}
+Pause (in seconds) between retry attemts, usually this value is backed off
+exponentially for subsequent retries. Default value is 1.
+\subsection{KA\_MINUTES}
+Time (in minutes) without contact with the server before we will send a
+MEMBER\_KEEP\_ALIVE message. Default value is 3.
+\subsection{case\_RETRYABLE}
+\label{def:case}
+This is a series of case labels for use inside a switch statement intended
+to represent errors which may be transient -- that is errors in response to
+which we will simply try to send the message again.
+
+As of this writing, case\_RETRYABLE contains the following error values:
+EAI\_AGAIN, EAGAIN, EPROTO, EHOSTUNREACH, ENETDOWN, ECOMM, ENETRESET,
+ENETUNREACH.
+
+\end{document}
