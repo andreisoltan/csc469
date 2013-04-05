@@ -954,23 +954,34 @@ int handle_command_input(char *line)
         }
 
         switch (result) {
-            case 0: /* Success, return! */
-            case_RETURN /* Unrecoverable errors, resending won't help */
-            case ID_INVALID:
-                /* We're no longer registered -- shouldn't be trying to
-                 * resend requests, return now. */
-                return result;
-            default:
+            /* Success, or errors that won't be helped by a resend */
+            case COMMAND_SUCC:
+            case ROOM_NOT_FOUND:
+            case MAX_ROOMS:
+            case ROOM_EXISTS:
+            case ROOM_NAME_TOOOO_LOOOONG:
+            case ROOM_FULL:
+            case ZERO_ROOMS:
+            case_RETURN
+                return 0;
+                break;
+/*
+            case_RETRYABLE
                 retries--;
                 fprintf(stderr, "%s: error, retrying...\n", __func__);
                 sleep(pause);
+                break;
+*/
+            default:
+                fprintf(stderr, "%s: unexpected error (%d)\n", __func__);
+                return result;
                 break;
         }
          
     } while((result != 0) && (retries > 0));
 
     /* Error if we ran out of retries */
-    return (retries == 0)? result : 0;
+    return (retries <= 0)? result : 0;
 }
 
 int main_loop() {

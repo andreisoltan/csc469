@@ -118,25 +118,22 @@ typedef struct our_msgbuf {
 #define SERVER_FULL     501
 #define NAME_IN_USE     502
 #define BOGUS_RESPONSE  503
-#define SERVER_DOWN     504
-#define RETRY_SERVER    505
-#define REG_FAILED      506
-#define ID_INVALID      507
-#define COMMAND_FAIL    508
+#define ID_INVALID      504
+#define COMMAND_FAIL    505
 #define COMMAND_SUCC    0
-#define MAX_ROOMS       509
-#define ROOM_EXISTS     510
-#define ROOM_NOT_FOUND  511
-#define ROOM_NAME_TOOOO_LOOOONG 512
-#define ROOM_FULL       513
-#define ZERO_ROOMS      514
+#define MAX_ROOMS       506
+#define ROOM_EXISTS     507
+#define ROOM_NOT_FOUND  508
+#define ROOM_NAME_TOOOO_LOOOONG 509
+#define ROOM_FULL       510
+#define ZERO_ROOMS      511
 
 /* Fault handling */
 #ifndef RETRY_PAUSE
-#define RETRY_PAUSE    1 /* base pause between retries, we back this off */
+    #define RETRY_PAUSE    1 /* base pause between retries, we back this off */
 #endif
 #ifndef RETRY_COUNT
-#define RETRY_COUNT    4 /* retry attempts */
+    #define RETRY_COUNT    4 /* retry attempts */
 #endif
 
 /* Connection errors we'd like to retry on */
@@ -155,7 +152,8 @@ typedef struct our_msgbuf {
             case ECONNREFUSED:  /* Connection refused */ \
             case ECONNABORTED:  /* Connection aborted */ \
             case ECONNRESET:    /* Connection reset */ \
-            case ENOTCONN:      /* The socket is not connected */
+            case ENOTCONN:      /* The socket is not connected */ \
+            case ID_INVALID:    /* chatserver doesn't recognize us */
 
 extern char *optarg; /* For option parsing */
 extern int retry_handler(int (*handler)(char*), char *arg, int *retries, int *pause);

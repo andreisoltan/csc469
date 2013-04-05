@@ -282,16 +282,17 @@ int retry_handler(int (*handler)(char*), char *arg,
             case 0: /* success */
                 return 0;
             case_RETRYABLE /* See client.h */
-                /* Retry */
-                //fprintf(stderr, ".");
+                /* Retrying might fix these... */
                 sleep(*pause);
                 (*pause) *= 2;
                 break;
             default:
                 /* Don't know what to do with these cases */
-                //fprintf(stderr, "\n");
                 debug_sub_print(DBG_FAULT, "%s: default: %d\n", 
                     __func__, result);
+            case_RETURN /* See client.h */
+                /* These won't be fixed by retrying, pass
+                 * them up to our caller */
                 return result;
                 break;
         }
