@@ -203,6 +203,11 @@ int _retrieve_chatserver_info(char *chatserver_name,
  *
  * Retries are governed by macros RETRY_COUNT and RETRY_PAUSE
  * (with exponential backoff on subsequent retries)
+ *
+ * THIS IS BASICALLY A COPY OF retry_handler ADAPTER FOR THE
+ * SIGNATURE OF _retrieve_chatserver_info. IT WOULD BE NICE TO
+ * REFACTOR THEM ALL TOGETHER BUT I AM NOT SUPER FAMILIAR WITH
+ * FUNCTION POINTERS AND ARGUMENT LISTS.
  */
 int retrieve_chatserver_info(char *chatserver_name,
     u_int16_t *tcp_port, u_int16_t *udp_port)

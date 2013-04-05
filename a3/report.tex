@@ -29,9 +29,11 @@
 
 \newpage
 \section{Introduction}
-Discuss design of our chat client
-Implemented all fault handling discussed in the handout also some
-naive-retrying for possible transient network failures.
+This document will discuss the design and implementation of our
+chat client. Our design is simple, heavily influenced by the
+starter code, and effective -- we handle all of the faults discussed
+in the handout and we make an effort to retry communications which
+return errors that may be transient.
 
 Some build parameters affecting the operation of our client are detailed
 in section \ref{sec:build}.
@@ -68,10 +70,12 @@ poll standard input to see if the user has entered anything, copying it into
 a buffer if available until we've accumulated a whole line which will be
 dispatched to handle\_chatmsg\_input or handle\_command\_input. If there 
 was nothing to read from standard input, we check for messages in the
-queue from the receiver process.
+queue from the receiver process. All of the calls here are non-blocking --
+the only time we choose to block is when sleeping between retry attempts.
 
 \section{Connection establishment}
-Our connection behaviour lives in the function init\_client.
+The function init\_client does the work of connecting to and registering
+on the chat server for us.
 If built with USE\_LOCN\_SERVER our first order of business is to contact
 the location server using retrieve\_chatserver\_info. As with 
 retry\_handler (see sec \ref{func:retry}), retrieve\_chatserver\_info can
@@ -86,7 +90,7 @@ error we try to contact the location server for new connection parameters.
 NAME\_IN\_USE is handled by prepending an underscore to the current username
 before re-attempting the connection, and SERVER\_FULL causes us to quit.
 
-\subsubsection{Connection re-establishment}
+\subsection{Connection re-establishment}
 In the event that we become disconnected and re-establish a connection with
 the server, our client will attempt to put us back into the same room we had
 been in when disconnected using rejoin(char). We first try simply changing to
@@ -125,20 +129,24 @@ connection to the server tested regularly.
 This function is used to wrap all of the functions dealing with command
 messages. The motivation is that we would like to have a simple way to 
 retry communication attempts that encounter transient errors. The errors
-triggering a retry can be seen in case\_RETRYABLE (sec\ref{def:case}).
+triggering a retry can be seen in case\_RETRYABLE (sec \ref{def:case}).
 Any errors not in that list are passed immediately up to the caller.
 
-Because *retries and *pause are passed as pointers, the caller can see
+Because *retries and *pause are passed as pointers, and modified in-place,
+the caller can see
 how many attempts were taken and has the option of handling special error
 cases before passing back in to retry\_handler.
 
 \subsection{generic\_command(int msg\_type, char *arg, char *buf)}
-Implements the general case of command message sending and receiving.
+Implements the general case of command message sending and receiving. All of
+the command message handlers are implemented using this function. Some of
+them perform more error checking on the response from generic\_command while
+others are a very thin wrapper.
 
-Returns:
+Return values are as follows.
 \begin{description}
     \item[some errno] if any of our calls set errno
-    \item{INVALID\_ID| if the server does not recognize our member id. This
+    \item[INVALID\_ID] if the server does not recognize our member id. This
     will trigger a reconnection attempt.
     \item[COMMAND\_SUCC] on success
     \item[COMMAND\_FAIL] on failure
@@ -146,7 +154,7 @@ Returns:
 \end{description}
 
 
-\section{Build parameters}
+\section{Build parameters and macros}
 \label{sec:build}
 \subsection{RETRY\_COUNT}
 Number of retry attempts. Default value is 4.
@@ -155,7 +163,7 @@ Pause (in seconds) between retry attemts, usually this value is backed off
 exponentially for subsequent retries. Default value is 1.
 \subsection{KA\_MINUTES}
 Time (in minutes) without contact with the server before we will send a
-MEMBER\_KEEP\_ALIVE message. Default value is 3.
+MEMBER\_KEEP\_ALIVE message. Default value is 1.
 \subsection{case\_RETRYABLE}
 \label{def:case}
 This is a series of case labels for use inside a switch statement intended
@@ -165,5 +173,13 @@ which we will simply try to send the message again.
 As of this writing, case\_RETRYABLE contains the following error values:
 EAI\_AGAIN, EAGAIN, EPROTO, EHOSTUNREACH, ENETDOWN, ECOMM, ENETRESET,
 ENETUNREACH.
+\subsection{case\_RETURN}
+Similar to case\_RETRYABLE (sec \ref{def:case}), this is a series of case
+labels for use in a switch statement. These represent errors which will not
+be overcome be resending the message. These are immediately returned up the
+call chain and will prompt an attempt to reconnect to the server.
+
+As of this writing, case\_RETURN contains the following error values:
+ECONNREFUSED, ECONNABORTED, ECONNRESET, ENOTCONN.
 
 \end{document}

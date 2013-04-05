@@ -196,16 +196,12 @@ void init_receiver()
 
 void handle_received_msg(char *buf)
 {
-/*
- * Some trickery is employed here. FMT_FMT is the string we're going
+/* Some trickery is employed here. FMT_FMT is the string we're going
  * to use to build a format string which we use to print chat
  * messages. FMT_LEN is the max length of FMT_FMT _after_ sprintf'ing
  * MAX_MEMBER_NAME_LEN (assuming a 2-digit MAX_MEMBER_LEN -- its value
  * is 24 right now) and text_len (assuming no more than 4 digits,
  * based on the value of 2048 for MAX_MSG_LEN) into it.
- *
- * No newline because there is one on the end of the messages we get
- * from clients TODO: enusure that received messages have a newline
  */
 #define FMT_FMT "%%%ds | %%.%ds\n"
 #define FMT_LEN 17

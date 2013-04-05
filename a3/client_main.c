@@ -27,41 +27,38 @@
 
 static char *option_string = "h:t:u:n:";
 
-/* For incoming/outgoing packets (shared because we're single-threaded) */
+/* Common send/receive structures for incoming/outgoing packets
+ * (shared because we're single-threaded) */
 char *buf;
+struct control_msghdr *cmh;
 
 /* For detecting server going down */
 time_t last_seen = 0;
 
 /* For TCP control message connection with server */
 #define PORT_STR_LEN 7 /* max length of a port number string */
+u_int16_t server_tcp_port;
 char server_tcp_port_str[PORT_STR_LEN];
 int tcp_sock, bytes;
 struct addrinfo tcp_hints;
 struct addrinfo *ai_result;
-struct control_msghdr *cmh; /* common header pointer */
 struct sockaddr_in server_tcp_addr;
-u_int16_t server_tcp_port;
 
 /* For UDP chat messages to server */
+u_int16_t server_udp_port;
 char server_udp_port_str[PORT_STR_LEN];
 int udp_socket_fd;
 struct addrinfo udp_hints;
 struct sockaddr_in server_udp_addr;
-u_int16_t server_udp_port;
 
-/* Server connection state */
+/* CLIENT STATE ********************************/
 char server_host_name[MAX_HOST_NAME_LEN];
 char server_room_name[MAX_ROOM_NAME_LEN+1];
-
-/* Needed for REGISTER_REQUEST */
 char member_name[MAX_MEMBER_NAME_LEN+1];
 u_int16_t client_udp_port; 
-
-/* Initialize with value returned in REGISTER_SUCC response */
 u_int16_t member_id = 0;
 
-/* For communication with receiver process */
+/* For communication with receiver process *****/
 pid_t receiver_pid;
 char ctrl2rcvr_fname[MAX_FILE_NAME_LEN];
 int ctrl2rcvr_qid;
@@ -71,52 +68,8 @@ int ctrl2rcvr_qid;
  */
 #define MAX_MSGDATA (MAX_MSG_LEN - sizeof(struct chat_msghdr))
 
-/*
- * Send command/check common to all handle_XXX functions
- *
- * TODO: try to handle EPIPE
- */
-#define TCP_SEND_BUF() \
-    if ((bytes = write(tcp_sock, buf, /*ntohs*/(cmh->msg_len))) == -1) { \
-        ret = errno; \
-        fprintf(stderr, "%s: write: %s\n", __func__, strerror(errno)); \
-        return ret; \
-    } else { \
-        seen_server(); \
-    } \
-    debug_sub_print(DBG_TCP, "%s: %dB written\n", __func__, bytes);
-
-/*
- * Receive command/check common to all handle_XXX functions
- *
- * TODO: check for ECONNREFUSED, ENOTCONN, 
- */
-#define TCP_RECV_BUF() \
-    if ((bytes = recv(tcp_sock, buf, MAX_MSG_LEN, 0)) == -1) { \
-        ret = errno; \
-        fprintf(stderr, "%s: recv'd: %s\n", __func__, strerror(errno)); \
-        return ret; \
-    } \
-    debug_sub_print(DBG_TCP, "%s: %dB recv'd\n", __func__, bytes);
-
-
-#define err_quit(...) \
-    fprintf(stderr, "ERROR: "); fprintf(stderr, ##__VA_ARGS__); \
-    shutdown_clean(1);
-
 /* prompt */
 #define PROMPT() printf("[%s]>  ",member_name);
-
-/* Depends on:
- *  countvar - a non-negative int -- the number of retries
- *  call - function call, or expression
- *  accept - return val to exit retry loop
- */
-#define RETRYCALL(call,countvar,accept,failret) \
-while ( (countvar-- > 0) && ((call) != (accept)) ) {\
-    printf("%s: retrying...\n", __func__); sleep(RETRY_PAUSE); \
-} \
-if (countvar < 0) {return (failret);}
 
 /************* FUNCTION DEFINITIONS ***********/
 
@@ -136,10 +89,7 @@ static void usage(char **argv) {
 
 
 /* Function to clean up after ourselves on exit, freeing any used
- * resources
- *
- * You should close any open TCP socket before calling this. We'll
- * send the quit request from here.
+ * resources.
  */
 void shutdown_clean(int ret) {
 
@@ -388,6 +338,26 @@ void bump_username() {
  * COMMAND HANDLERS ***********************************************************
  *****************************************************************************/
 
+/* Implements the general case for command message send-receive
+ *
+ * If any of our underlying calls return an error, we will pass
+ * that up to our caller immediately.
+ *
+ * Otherwise we'll examine the response.
+ *
+ * Returns:
+ * - some errno from one of our calls
+ * - INVALID_ID if the server does not recognize our member id
+ * - COMMAND_SUCC on success
+ * - COMMAND_FAIL on failure
+ * - BOGUS_RESPONSE on an unexpected reply
+ *
+ * Takes advantage of the fact that for a request message type
+ * x, the corresponding success and fail responses are x+1
+ * and x+2 respectively. We encode that relationship in the macros
+ * CODE_SUCC() and CODE_FAIL(). Keepalive and quit messages do not
+ * wait for a response.
+ */
 int generic_command(int msg_type, char *arg, char *buf) {
 
     int ret = 0, bytes = 0;
@@ -787,7 +757,7 @@ int init_client()
     {
         /* Freak out, or retry or something */
         fprintf(stderr, "%s: error contacting location server\n", __func__);
-        exit(1);
+        shutdown_clean(1);
     };
 
 #endif
@@ -819,6 +789,8 @@ int init_client()
                 break;
             default:
 #ifdef USE_LOCN_SERVER
+                /* Some communication error, try refreshing parameters
+                 * from the locn server if we're using it */
                 if((retrieve_chatserver_info(server_host_name,
                     &server_tcp_port, &server_udp_port) != 0))
                 {
@@ -864,9 +836,20 @@ int handle_chatmsg_input(char *inputdata)
     strcpy((char *)(chat->msgdata), inputdata);
     chat->msg_len = /*htons*/(sizeof(struct chat_msghdr) + strlen(inputdata));
 
-    RETRYCALL((bytes = write(udp_socket_fd, buf, /*ntohs*/(chat->msg_len))),\
-        tries, (chat->msg_len), errno);
+    while ( (tries-- > 0) &&
+        ((write(udp_socket_fd, buf, /*ntohs*/(chat->msg_len)))
+        != (chat->msg_len)) )
+    {
+        ret = errno;
+        printf("%s: retrying...\n", __func__);
+        sleep(RETRY_PAUSE);
+    }
+
+    if (tries < 0) {
+        return (ret);
+    }
     debug_sub_print(DBG_UDP, "%s: %dB written\n", __func__, bytes);
+
 
     free(buf);
     return ret;
@@ -969,15 +952,21 @@ int handle_command_input(char *line)
                 printf("Error !%c is not a recognized command.\n",cmd);
                 break;
         }
-        if (result == ID_INVALID) {
-            /* We're no longer registered -- shouldn't be trying to
-             * resend requests, return now. */
-            return result;
-        } else if (result) {
-            retries--;
-            fprintf(stderr, "%s: error, retrying...\n", __func__);
-            sleep(pause);
-        } 
+
+        switch (result) {
+            case 0: /* Success, return! */
+            case_RETURN /* Unrecoverable errors, resending won't help */
+            case ID_INVALID:
+                /* We're no longer registered -- shouldn't be trying to
+                 * resend requests, return now. */
+                return result;
+            default:
+                retries--;
+                fprintf(stderr, "%s: error, retrying...\n", __func__);
+                sleep(pause);
+                break;
+        }
+         
     } while((result != 0) && (retries > 0));
 
     /* Error if we ran out of retries */
@@ -1033,8 +1022,9 @@ int main_loop() {
             bytes = read(STDIN, buf + buf_idx, MAX_MSGDATA - buf_idx);
 
             if (bytes <= 0) {
-                err_quit("%s: reading from stdin: %s\n",
+                fprintf(stderr, "%s: reading from stdin: %s\n",
                     __func__, strerror(errno));
+                shutdown_clean(1);
             } else {
                 newline = (char *) (memchr(buf + buf_idx, '\n', bytes));
 
@@ -1084,9 +1074,9 @@ int main_loop() {
                         __func__, strerror(errno));
                     */
                 } else {
-                    /* TODO: try handling this
-                     */
-                    err_quit("%s: msgrcv: %s\n", __func__, strerror(errno)); 
+                    fprintf(stderr, "%s: msgrcv: unexpected error: %s\n",
+                        __func__, strerror(errno));
+                    shutdown_clean(1);
                 }
             } else if (bytes > 0) {
                 /* Update our timestamp if it is an activity notification from
@@ -1167,17 +1157,21 @@ int main(int argc, char **argv)
      */
     server_room_name[0] = '\0'; 
     while (ret != 0) {
-        
-        tries = RETRY_COUNT;
+       
+        tries = RETRY_COUNT; 
         while ((ret = init_client()) != 0) {
             if (tries-- <= 0) {
-                fprintf(stderr, "Problems initiating connection. Quitting.\n");
+                /* If we fail to connect RETRY_COUNT times,
+                 * just give up.
+                 */
+                fprintf(stderr, "Problem initiating connection with "
+                    "server.\n");
                 shutdown_clean(ret);
             }
         }
 
-        if ((ret = main_loop())) {
-            fprintf(stderr, "Problem with server connection. Trying to reconnect...\n");
+        if ((ret = main_loop()) != 0) {
+            fprintf(stderr, "Trying to reconnect...\n");
         }
     }
 

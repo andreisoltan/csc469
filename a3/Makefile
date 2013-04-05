@@ -8,7 +8,7 @@ KILL_CMD := killall -v -u $(ME)
 QUEUES = $(shell ipcs -q | grep $(ME) | cut -f2 -d' ' | sed 's/^/-q /')
 
 CC = gcc
-CFLAGS = -Wall -g -DDEBUG -DDBG_LOC -DDBG_ACTIVE -DUSE_LOCN_SERVER -DDBG_RCV #-DDBG_TCP -DDBG_UDP
+CFLAGS = -Wall -g -DUSE_LOCN_SERVER #-DDEBUG -DDBG_LOC -DDBG_ACTIVE -DUSE_LOCN_SERVER -DDBG_RCV #-DDBG_TCP -DDBG_UDP
 SERVER_BIN = chatserver 
 SERVER_OBJS = server_util.o server_main.o
 
@@ -44,22 +44,32 @@ $(RECEIVER_BIN): $(RECVR_OBJS)
 	$(CC) $(CFLAGS) $(RECVR_OBJS) -o $(RECEIVER_BIN)
 
 clean:
-	rm -f *.o $(SERVER_BIN) $(CLIENT_BIN) core
+	rm -f *.o $(SERVER_BIN) $(CLIENT_BIN) core *.dvi *.ps *.pdf *.tgz \
+	  *.log *.out *.toc *.aux
+
+###########################################################################
+# submission target
+###########################################################################
+
+tar: client.h client_main.c client_util.c client_recv.c report.pdf
+	tar -czvf a3.tgz $^
 
 ###########################################################################
 # doc targets
 ###########################################################################
 
-docs: format-code design-doc
+docs: format-code report.pdf
 
 format-code:
 	enscript --mark-wrapped-lines=box --header='g2prindi|$$n|page $$% of $$=' \
 	  -C --highlight=c -p a3-code.ps \
 	  client.h client_main.c client_recv.c client_util.c
 
-design-doc:
-	echo "Design this"
-
+report.pdf: report.tex
+	latex report.tex
+	latex report.tex
+	dvips -Ppdf -o report.ps report.dvi
+	ps2pdf report.ps
 
 ###########################################################################
 # testing targets (for running locally)

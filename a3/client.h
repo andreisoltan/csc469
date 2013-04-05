@@ -87,7 +87,7 @@ typedef struct our_msgbuf {
 
 /* For keepalive */
 #ifndef KA_MINUTES
-    #define KA_MINUTES 2
+    #define KA_MINUTES 1
 #endif
 #define KA_TIMEOUT ( 60 * KA_MINUTES )
 
@@ -132,19 +132,30 @@ typedef struct our_msgbuf {
 #define ZERO_ROOMS      514
 
 /* Fault handling */
+#ifndef RETRY_PAUSE
 #define RETRY_PAUSE    1 /* base pause between retries, we back this off */
-#define RETRY_COUNT    3 /* retry attempts */
+#endif
+#ifndef RETRY_COUNT
+#define RETRY_COUNT    4 /* retry attempts */
+#endif
 
 /* Connection errors we'd like to retry on */
 #define case_RETRYABLE \
             case EAI_AGAIN:     /* temporary getaddrinfo failure */ \
             case EAGAIN:        /* maybe a transient failure */ \
             case EPROTO:        /* locn server response in unexpected format */ \
-            case EHOSTUNREACH:  /* maybe a transient failure */ \
-            case ENETDOWN:      /* maybe a transient failure */ \
+            case EHOSTUNREACH:  /* Host is unreachable */ \
+            case ENETDOWN:      /* Network is down */ \
             case ECOMM:         /* Communication error on send */ \
-            case ENETRESET:     /* maybe a transient failure */ \
-            case ENETUNREACH:   /* maybe a transient failure */
+            case ENETRESET:     /* Connection aborted by network */ \
+            case ENETUNREACH:   /* Network unreachable */
+
+/* Unrecoverable comm errors */
+#define case_RETURN \
+            case ECONNREFUSED:  /* Connection refused */ \
+            case ECONNABORTED:  /* Connection aborted */ \
+            case ECONNRESET:    /* Connection reset */ \
+            case ENOTCONN:      /* The socket is not connected */
 
 extern char *optarg; /* For option parsing */
 extern int retry_handler(int (*handler)(char*), char *arg, int *retries, int *pause);
