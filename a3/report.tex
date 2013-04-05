@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[12pt]{article}
 \usepackage{fullpage}
 \usepackage{graphicx}
 \usepackage{listings}
@@ -7,8 +7,10 @@
 \usepackage{hyperref}
 \usepackage{float}
 
-\author{Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu
-\and Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu}
+\newcommand{\mono}[1]{\texttt{#1}}
+
+\author {Jonathan Prindiville\\993177628\\g2prindi@cdf.toronto.edu
+\and Andrei Soltan\\998556067\\g0soltan@cdf.toronto.edu}
 \title{CSC469: Assignment 3}
 \date{5 April, 2013}
 
@@ -32,21 +34,32 @@
 This document will discuss the design and implementation of our
 chat client. Our design is simple, heavily influenced by the
 starter code, and effective -- we handle all of the faults discussed
-in the handout and we make an effort to retry communications which
-return errors that may be transient.
+in the handout and we make an effort to try resending communications which
+return errors that could be transient.
+\begin{itemize}
+\item We'll give an overview of the execution of the client in section
+\ref{sec:basic}.
 
-Some build parameters affecting the operation of our client are detailed
+\item Section \ref{sec:init} gives a more detailed look at the connection and
+re-connection process.
+
+\item Our strategy for maintaining the connection with the server is discussed
+in section \ref{sec:keepalive}
+
+\item Section \ref{sec:util} contains explaination of some functions which we
+used quite a bit in constructing the client.
+
+\item Some build parameters affecting the operation of our client are detailed
 in section \ref{sec:build}.
+\end{itemize}
 
 \section{Basic operation}
-We've kept most of the structure of the interface as well as the broad
-strokes of the client's operation from the starter code which was
-provided to us.
-
-The server address and port numbers are obtained either from a location
-server or from the command-line (depending on the presence of the
-USE\_LOCN\_SERVER flag at build time) and the user must supply a name
-on the command-line.
+\label{sec:basic}
+We've kept the interface as well as the basic structure
+ of the client's operation from the starter code which was
+provided to us. The user must supply a name on the command-line and (if the
+\mono{USE\_LOCN\_SERVER}
+flag was not present at build time) the server address and port numbers.
 
 Once the connection parameters have been collected we start the
 receiver process. The existing xterm-launching infrastructure has been
@@ -68,48 +81,53 @@ as mentioned earlier. We check the time of last contact with the server,
 deciding whether or not to send a keepalive message. We then
 poll standard input to see if the user has entered anything, copying it into
 a buffer if available until we've accumulated a whole line which will be
-dispatched to handle\_chatmsg\_input or handle\_command\_input. If there 
+dispatched to \mono{handle\_chatmsg\_input} or
+\mono{handle\_command\_input}. If there 
 was nothing to read from standard input, we check for messages in the
 queue from the receiver process. All of the calls here are non-blocking --
 the only time we choose to block is when sleeping between retry attempts.
 
 \section{Connection establishment}
-The function init\_client does the work of connecting to and registering
+\label{sec:init}
+The function \mono{init\_client} does the work of connecting to and registering
 on the chat server for us.
-If built with USE\_LOCN\_SERVER our first order of business is to contact
-the location server using retrieve\_chatserver\_info. As with 
-retry\_handler (see sec \ref{func:retry}), retrieve\_chatserver\_info can
+If built with \mono{USE\_LOCN\_SERVER} our first order of business is to contact
+the location server using \mono{retrieve\_chatserver\_info}. As with 
+\mono{retry\_handler} (see sec \ref{func:retry}), \mono{retrieve\_chatserver\_info} can
 make multiple attempts
 at its goal before returning, retrying if it encounters errors in
-case\_RETRYABLE (see sec \ref{def:case}) and returning if it either runs
+\mono{case\_RETRYABLE} (see sec \ref{def:case}) and returning if it either runs
 out of retry attempts or if it encounter an error that is not in.
 
-We wrap our call to handle\_register\_req in retry\_handler and also
-catch the errors NAME\_IN\_USE and SERVER\_FULL. In the event of a different
+We wrap our call to \mono{handle\_register\_req} in \mono{retry\_handler} and
+also catch the errors \mono{NAME\_IN\_USE} and \mono{SERVER\_FULL}. In the event
+of a different
 error we try to contact the location server for new connection parameters.
-NAME\_IN\_USE is handled by prepending an underscore to the current username
-before re-attempting the connection, and SERVER\_FULL causes us to quit.
+\mono{NAME\_IN\_USE} is handled by prepending an underscore to the current username
+before re-attempting the connection, and \mono{SERVER\_FULL} causes us to quit.
 
 \subsection{Connection re-establishment}
 In the event that we become disconnected and re-establish a connection with
 the server, our client will attempt to put us back into the same room we had
 been in when disconnected using rejoin(char). We first try simply changing to
-the room -- if we get back ZERO\_ROOMS or ROOM\_NOT\_FOUND we will try to
+the room -- if we get back \mono{ZERO\_ROOMS} or \mono{ROOM\_NOT\_FOUND} we will try to
 create it.
 
-If the response to the creation request is COMMAND\_SUCC or ROOM\_EXIST we
-try again to switch to that room. In the case of any other returns
-(MAX\_ROOMS, ROOM\_NAME\_TOOOO\_LOOOONG, or another) we simply give up.
+If the response to the creation request is \mono{COMMAND\_SUCC} or
+\mono{ROOM\_EXIST} we try again to switch to that room. In the case of any other
+returns (\mono{MAX\_ROOMS}, \mono{ROOM\_NAME\_TOOOO\_LOOOONG}, or another) we simply give up.
 
 \section{Connection maintenance}
+\label{sec:keepalive}
 We wish to maintain a connection with the server even if our user is not
 actively issuing commands. In order to do this, we arrange for 
-MEMBER\_KEEP\_ALIVE messages to be sent during times of inactivity.
+\mono{MEMBER\_KEEP\_ALIVE} messages to be sent during times of inactivity.
 
 As mentioned above, during the main input loop we check the current time
 against the recorded time of the last contact with the server. If it has
-been more than KA\_MINUTES minutes, we send a keepalive message. This message
-is sent using retry\_handler (see sec \ref{func:retry}) so it will make
+been more than \mono{KA\_MINUTES} minutes, we send a keepalive message.
+This message
+is sent using \mono{retry\_handler} (see sec \ref{func:retry}) so it will make
 several attempts if there seem to be transient network issues.
 
 In order to minimize the number of keepalive messages that we send, we've
@@ -124,62 +142,64 @@ keepalive messages -- those in inactive chat sessions will still have their
 connection to the server tested regularly.
 
 \section{Utility functions}
-\subsection{retry\_handler(int (*handler)(char*), char *arg, int *retries, int *pause)}
+\label{sec:util}
+
+\subsection{\mono{retry\_handler(int (*handler)(char*), char *arg, int *retries, int *pause)}}
 \label{func:retry}
 This function is used to wrap all of the functions dealing with command
 messages. The motivation is that we would like to have a simple way to 
 retry communication attempts that encounter transient errors. The errors
-triggering a retry can be seen in case\_RETRYABLE (sec \ref{def:case}).
+triggering a retry can be seen in \mono{case\_RETRYABLE} (sec \ref{def:case}).
 Any errors not in that list are passed immediately up to the caller.
 
-Because *retries and *pause are passed as pointers, and modified in-place,
+Because \mono{*retries} and \mono{*pause} are passed as pointers, and modified in-place,
 the caller can see
 how many attempts were taken and has the option of handling special error
-cases before passing back in to retry\_handler.
+cases before passing back in to \mono{retry\_handler}.
 
-\subsection{generic\_command(int msg\_type, char *arg, char *buf)}
+\subsection{\mono{generic\_command(int msg\_type, char *arg, char *buf)}}
 Implements the general case of command message sending and receiving. All of
 the command message handlers are implemented using this function. Some of
-them perform more error checking on the response from generic\_command while
+them perform more error checking on the response from \mono{generic\_command} while
 others are a very thin wrapper.
 
 Return values are as follows.
 \begin{description}
-    \item[some errno] if any of our calls set errno
-    \item[INVALID\_ID] if the server does not recognize our member id. This
+    \item[errno] if any of our calls fail and set errno, we pass it back to our caller
+    \item[\mono{INVALID\_ID}] if the server does not recognize our member id. This
     will trigger a reconnection attempt.
-    \item[COMMAND\_SUCC] on success
-    \item[COMMAND\_FAIL] on failure
-    \item[BOGUS\_RESPONSE] on an unexpected reply
+    \item[\mono{COMMAND\_SUCC}] on success
+    \item[\mono{COMMAND\_FAIL}] on failure
+    \item[\mono{BOGUS\_RESPONSE}] on an unexpected reply
 \end{description}
 
 
 \section{Build parameters and macros}
 \label{sec:build}
-\subsection{RETRY\_COUNT}
+\subsection{\mono{RETRY\_COUNT}}
 Number of retry attempts. Default value is 4.
-\subsection{RETRY\_PAUSE}
+\subsection{\mono{RETRY\_PAUSE}}
 Pause (in seconds) between retry attemts, usually this value is backed off
 exponentially for subsequent retries. Default value is 1.
-\subsection{KA\_MINUTES}
+\subsection{\mono{KA\_MINUTES}}
 Time (in minutes) without contact with the server before we will send a
-MEMBER\_KEEP\_ALIVE message. Default value is 1.
-\subsection{case\_RETRYABLE}
+\mono{MEMBER\_KEEP\_ALIVE} message. Default value is 1.
+\subsection{\mono{case\_RETRYABLE}}
 \label{def:case}
 This is a series of case labels for use inside a switch statement intended
 to represent errors which may be transient -- that is errors in response to
 which we will simply try to send the message again.
 
-As of this writing, case\_RETRYABLE contains the following error values:
-EAI\_AGAIN, EAGAIN, EPROTO, EHOSTUNREACH, ENETDOWN, ECOMM, ENETRESET,
-ENETUNREACH.
-\subsection{case\_RETURN}
-Similar to case\_RETRYABLE (sec \ref{def:case}), this is a series of case
+As of this writing,\mono{case\_RETRYABLE} contains the following error values:
+\mono{EAI\_AGAIN, EAGAIN, EPROTO, EHOSTUNREACH, ENETDOWN, ECOMM, ENETRESET,
+ENETUNREACH}.
+\subsection{\mono{case\_RETURN}}
+Similar to \mono{case\_RETRYABLE} (sec \ref{def:case}), this is a series of case
 labels for use in a switch statement. These represent errors which will not
 be overcome be resending the message. These are immediately returned up the
 call chain and will prompt an attempt to reconnect to the server.
 
-As of this writing, case\_RETURN contains the following error values:
-ECONNREFUSED, ECONNABORTED, ECONNRESET, ENOTCONN.
+As of this writing, \mono{case\_RETURN} contains the following error values:
+\mono{ECONNREFUSED, ECONNABORTED, ECONNRESET, ENOTCONN}.
 
 \end{document}
