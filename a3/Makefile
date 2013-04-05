@@ -47,6 +47,21 @@ clean:
 	rm -f *.o $(SERVER_BIN) $(CLIENT_BIN) core
 
 ###########################################################################
+# doc targets
+###########################################################################
+
+docs: format-code design-doc
+
+format-code:
+	enscript --mark-wrapped-lines=box --header='g2prindi|$$n|page $$% of $$=' \
+	  -C --highlight=c -p a3-code.ps \
+	  client.h client_main.c client_recv.c client_util.c
+
+design-doc:
+	echo "Design this"
+
+
+###########################################################################
 # testing targets (for running locally)
 ###########################################################################
 
